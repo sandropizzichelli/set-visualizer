@@ -2436,7 +2436,7 @@ function PageSwitcher({ page, setPage }) {
   );
 }
 
-export default function App() {
+export default function SetVisualizer() {
   const [page, setPage] = useState("tricordi");
 
   return (
