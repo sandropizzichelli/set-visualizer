@@ -12,26 +12,9 @@ import {
   findPentachordVoicings,
   findHexachordVoicings,
 } from "./setUtils";
+import { PillButton } from "./SetControls";
 import GenericSetPage from "./GenericSetPage";
 import TricordPage from "./TricordPage";
-
-function PillButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "8px 12px",
-        borderRadius: "999px",
-        border: active ? "2px solid #111" : "1px solid #ccc",
-        background: active ? "#e2e8f0" : "white",
-        cursor: "pointer",
-        fontSize: "14px",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
 
 function TetrachordPage() {
   return (
