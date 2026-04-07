@@ -314,3 +314,200 @@ export function findPentachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
 export function findHexachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
   return findNNoteVoicings(targetPcs, maxSpan, ALL_6_STRING_GROUPS, 6);
 }
+function combinationsOfSize(items, size, start = 0, prefix = [], result = []) {
+  if (prefix.length === size) {
+    result.push([...prefix]);
+    return result;
+  }
+
+  for (let i = start; i <= items.length - (size - prefix.length); i++) {
+    prefix.push(items[i]);
+    combinationsOfSize(items, size, i + 1, prefix, result);
+    prefix.pop();
+  }
+
+  return result;
+}
+
+function comparePcArrays(a, b) {
+  const len = Math.min(a.length, b.length);
+
+  for (let i = 0; i < len; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+
+  return a.length - b.length;
+}
+
+function parseForteNameForSort(name) {
+  if (!name) {
+    return {
+      cardinality: Infinity,
+      number: Infinity,
+      isZ: true,
+    };
+  }
+
+  const [cardinalityPart, restPart] = name.split("-");
+  const isZ = restPart.startsWith("Z");
+  const number = parseInt(restPart.replace("Z", ""), 10);
+
+  return {
+    cardinality: parseInt(cardinalityPart, 10),
+    number,
+    isZ,
+  };
+}
+
+function compareForteNames(a, b) {
+  if (a === b) return 0;
+  if (a && !b) return -1;
+  if (!a && b) return 1;
+
+  const A = parseForteNameForSort(a);
+  const B = parseForteNameForSort(b);
+
+  if (A.cardinality !== B.cardinality) {
+    return A.cardinality - B.cardinality;
+  }
+
+  if (A.number !== B.number) {
+    return A.number - B.number;
+  }
+
+  if (A.isZ !== B.isZ) {
+    return A.isZ ? 1 : -1;
+  }
+
+  return String(a).localeCompare(String(b));
+}
+
+function sortClassResults(classes) {
+  return [...classes].sort((a, b) => {
+    if (a.cardinality !== b.cardinality) {
+      return b.cardinality - a.cardinality;
+    }
+
+    const forteCompare = compareForteNames(a.forteName, b.forteName);
+    if (forteCompare !== 0) return forteCompare;
+
+    return comparePcArrays(a.primeForm, b.primeForm);
+  });
+}
+
+export function getConcreteSubsets(pcs, options = {}) {
+  const normalized = normalizePcs(pcs);
+  const defaultMax = normalized.length - 1;
+
+  const minCardinality = Math.max(1, options.minCardinality ?? 1);
+  const maxCardinality = Math.min(
+    defaultMax,
+    options.maxCardinality ?? defaultMax
+  );
+
+  if (normalized.length === 0) return [];
+  if (minCardinality > maxCardinality) return [];
+
+  const results = [];
+
+  for (let k = maxCardinality; k >= minCardinality; k--) {
+    const combos = combinationsOfSize(normalized, k);
+    combos.forEach((combo) => {
+      results.push({
+        pcs: combo,
+        cardinality: combo.length,
+      });
+    });
+  }
+
+  return results;
+}
+
+export function getSubsetClasses(pcs, options = {}) {
+  const concreteSubsets = getConcreteSubsets(pcs, options);
+  const grouped = new Map();
+
+  concreteSubsets.forEach((subset) => {
+    const pf = primeForm(subset.pcs);
+    const key = pf.join(",");
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        primeForm: pf,
+        forteName: findForteNumberByPf(pf),
+        cardinality: pf.length,
+        concreteCount: 0,
+        members: [],
+      });
+    }
+
+    const entry = grouped.get(key);
+    entry.concreteCount += 1;
+    entry.members.push(subset.pcs);
+  });
+
+  const results = Array.from(grouped.values()).map((entry) => ({
+    ...entry,
+    members: [...entry.members].sort(comparePcArrays),
+  }));
+
+  return sortClassResults(results);
+}
+
+export function getConcreteSupersets(pcs, targetCardinality) {
+  const normalized = normalizePcs(pcs);
+  const sourceCardinality = normalized.length;
+
+  if (sourceCardinality === 0) return [];
+  if (targetCardinality <= sourceCardinality) return [];
+  if (targetCardinality > 12) return [];
+
+  const universe = Array.from({ length: 12 }, (_, i) => i);
+  const missing = universe.filter((pc) => !normalized.includes(pc));
+  const addCount = targetCardinality - sourceCardinality;
+
+  if (addCount > missing.length) return [];
+
+  const additions = combinationsOfSize(missing, addCount);
+
+  return additions
+    .map((extra) => {
+      const superset = normalizePcs([...normalized, ...extra]);
+      return {
+        pcs: superset,
+        cardinality: superset.length,
+      };
+    })
+    .sort((a, b) => comparePcArrays(a.pcs, b.pcs));
+}
+
+export function getSupersetClasses(pcs, targetCardinality) {
+  const concreteSupersets = getConcreteSupersets(pcs, targetCardinality);
+  const grouped = new Map();
+
+  concreteSupersets.forEach((superset) => {
+    const pf = primeForm(superset.pcs);
+    const key = pf.join(",");
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        primeForm: pf,
+        forteName: findForteNumberByPf(pf),
+        cardinality: pf.length,
+        concreteCount: 0,
+        members: [],
+      });
+    }
+
+    const entry = grouped.get(key);
+    entry.concreteCount += 1;
+    entry.members.push(superset.pcs);
+  });
+
+  const results = Array.from(grouped.values()).map((entry) => ({
+    ...entry,
+    members: [...entry.members].sort(comparePcArrays),
+  }));
+
+  return sortClassResults(results);
+}

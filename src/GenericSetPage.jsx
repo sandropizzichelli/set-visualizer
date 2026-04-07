@@ -8,6 +8,8 @@ import {
   getTransformLabel,
   complementFromPcs,
   filterByBassDegree,
+  getSubsetClasses,
+  getSupersetClasses,
 } from "./setUtils";
 import Fretboard from "./Fretboard";
 import VoicingCard from "./VoicingCard";
@@ -36,6 +38,10 @@ export default function GenericSetPage({
   const [showAll, setShowAll] = useState(true);
   const [showComplement, setShowComplement] = useState(false);
   const [excludeOpenStrings, setExcludeOpenStrings] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState("voicings");
+  const [supersetTargetCardinality, setSupersetTargetCardinality] = useState(
+    Math.min(noteCount + 1, 8)
+  );
 
   const [connectionFilter, setConnectionFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
@@ -75,6 +81,14 @@ export default function GenericSetPage({
       return a.localeCompare(b);
     });
   }, [keys]);
+
+  const supersetCardinalityOptions = useMemo(() => {
+    const options = [];
+    for (let n = noteCount + 1; n <= 8; n++) {
+      options.push(n);
+    }
+    return options;
+  }, [noteCount]);
 
   const setDataRaw = dataMap[selectedForte] || null;
 
@@ -158,6 +172,20 @@ export default function GenericSetPage({
     activeSet,
   ]);
 
+  const subsetClasses = useMemo(() => {
+    if (!activeSet || showComplement) return [];
+
+    return getSubsetClasses(activeSet.pcs, {
+      minCardinality: 3,
+      maxCardinality: activeSet.pcs.length - 1,
+    });
+  }, [activeSet, showComplement]);
+
+  const supersetClasses = useMemo(() => {
+    if (!activeSet || showComplement) return [];
+    return getSupersetClasses(activeSet.pcs, supersetTargetCardinality);
+  }, [activeSet, showComplement, supersetTargetCardinality]);
+
   const selectedVoicing = filteredVoicings[selected] || null;
 
   const availableGroupPatterns = useMemo(() => {
@@ -191,6 +219,11 @@ export default function GenericSetPage({
     transformMode,
     transformAmount,
   ]);
+
+  useEffect(() => {
+    const nextValue = Math.min(noteCount + 1, 8);
+    setSupersetTargetCardinality(nextValue);
+  }, [selectedForte, noteCount]);
 
   return (
     <div
@@ -306,6 +339,65 @@ export default function GenericSetPage({
 
           {!showComplement && (
             <>
+              <div style={{ marginTop: "16px" }}>
+                <SectionTitle>Analisi insiemistica</SectionTitle>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <PillButton
+                    active={analysisMode === "voicings"}
+                    onClick={() => setAnalysisMode("voicings")}
+                  >
+                    Voicing
+                  </PillButton>
+                  <PillButton
+                    active={analysisMode === "subsets"}
+                    onClick={() => setAnalysisMode("subsets")}
+                  >
+                    Subset-class
+                  </PillButton>
+                  <PillButton
+                    active={analysisMode === "supersets"}
+                    onClick={() => setAnalysisMode("supersets")}
+                  >
+                    Superset-class
+                  </PillButton>
+                </div>
+              </div>
+
+              {analysisMode === "supersets" && (
+                <div style={{ marginTop: "16px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Cardinalità target superset
+                  </label>
+                  <select
+                    value={supersetTargetCardinality}
+                    onChange={(e) =>
+                      setSupersetTargetCardinality(Number(e.target.value))
+                    }
+                    style={{
+                      width: "100%",
+                      maxWidth: "280px",
+                      padding: "12px",
+                      borderRadius: "12px",
+                      border: "1px solid #ccc",
+                      fontSize: "16px",
+                      background: "white",
+                    }}
+                  >
+                    {supersetCardinalityOptions.map((n) => (
+                      <option key={n} value={n}>
+                        Cardinalità {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div
                 style={{
                   display: "grid",
@@ -532,40 +624,166 @@ export default function GenericSetPage({
             }}
           >
             {!showComplement ? (
-              <>
-                <h2>Possibilità trovate</h2>
-                <p style={{ color: "#666" }}>
-                  {filteredVoicings.length} forme complessive per il {noteName}{" "}
-                  selezionato.
-                </p>
+              analysisMode === "voicings" ? (
+                <>
+                  <h2>Possibilità trovate</h2>
+                  <p style={{ color: "#666" }}>
+                    {filteredVoicings.length} forme complessive per il {noteName}{" "}
+                    selezionato.
+                  </p>
 
-                <div
-                  style={{
-                    maxHeight: "760px",
-                    overflowY: "auto",
-                    marginTop: "16px",
-                  }}
-                >
-                  {filteredVoicings.map((v, i) => (
-                    <VoicingCard
-                      key={`${selectedForte}-${i}-${v.positions
-                        .map((p) => `${p.stringIndex}-${p.fret}`)
-                        .join("-")}`}
-                      voicing={v}
-                      index={i}
-                      selected={i === selected}
-                      onSelect={() => {
-                        setSelected(i);
-                        if (showAll) setShowAll(false);
-                      }}
-                      displayMode={displayMode}
-                      showPrimeForm={true}
-                      showForte={true}
-                      degreeMap={activeSet?.degreeMap}
-                    />
-                  ))}
-                </div>
-              </>
+                  <div
+                    style={{
+                      maxHeight: "760px",
+                      overflowY: "auto",
+                      marginTop: "16px",
+                    }}
+                  >
+                    {filteredVoicings.map((v, i) => (
+                      <VoicingCard
+                        key={`${selectedForte}-${i}-${v.positions
+                          .map((p) => `${p.stringIndex}-${p.fret}`)
+                          .join("-")}`}
+                        voicing={v}
+                        index={i}
+                        selected={i === selected}
+                        onSelect={() => {
+                          setSelected(i);
+                          if (showAll) setShowAll(false);
+                        }}
+                        displayMode={displayMode}
+                        showPrimeForm={true}
+                        showForte={true}
+                        degreeMap={activeSet?.degreeMap}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : analysisMode === "subsets" ? (
+                <>
+                  <h2>Subset-class</h2>
+                  <p style={{ color: "#666" }}>
+                    {subsetClasses.length} classi di sottoinsiemi trovate per il{" "}
+                    {noteName} selezionato.
+                  </p>
+
+                  <div
+                    style={{
+                      maxHeight: "760px",
+                      overflowY: "auto",
+                      marginTop: "16px",
+                    }}
+                  >
+                    {subsetClasses.map((item, i) => (
+                      <div
+                        key={`${selectedForte}-subset-${i}-${item.primeForm.join(
+                          "-"
+                        )}`}
+                        style={{
+                          padding: "12px",
+                          borderRadius: "12px",
+                          border: "1px solid #ddd",
+                          background: "white",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        <div style={{ fontWeight: "bold" }}>
+                          {item.forteName || "n.d."}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
+                          Prime form: [{item.primeForm.join(",")}]
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
+                          Cardinalità: {item.cardinality}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
+                          Occorrenze concrete: {item.concreteCount}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2>Superset-class</h2>
+                  <p style={{ color: "#666" }}>
+                    {supersetClasses.length} classi di soprainsiemi trovate a
+                    cardinalità {supersetTargetCardinality}.
+                  </p>
+
+                  <div
+                    style={{
+                      maxHeight: "760px",
+                      overflowY: "auto",
+                      marginTop: "16px",
+                    }}
+                  >
+                    {supersetClasses.map((item, i) => (
+                      <div
+                        key={`${selectedForte}-superset-${i}-${item.primeForm.join(
+                          "-"
+                        )}`}
+                        style={{
+                          padding: "12px",
+                          borderRadius: "12px",
+                          border: "1px solid #ddd",
+                          background: "white",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        <div style={{ fontWeight: "bold" }}>
+                          {item.forteName || "n.d."}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
+                          Prime form: [{item.primeForm.join(",")}]
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
+                          Cardinalità: {item.cardinality}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
+                          Occorrenze concrete: {item.concreteCount}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )
             ) : (
               <>
                 <h2>Dettagli analitici</h2>
