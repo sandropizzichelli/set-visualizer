@@ -1,15 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { DEFAULT_MAX_SPAN, TRICHORD_FORTE_MAP } from "./setData";
 import {
-  parseNotes,
-  combinationsOfThree,
-  primeForm,
-  pcsToLabel,
   transformPcs,
   getTransformLabel,
   transformOrderedPrimeForm,
   makeDegreeMapFromPrimeForm,
-  makeStructuralKey,
+  complementFromPcs,
   filterByBassDegree,
   findVoicings,
 } from "./setUtils";
@@ -22,82 +18,92 @@ import {
   TransformButtons,
 } from "./SetControls";
 
+const TRICHORD_OPTIONS = Object.entries(TRICHORD_FORTE_MAP).map(
+  ([pfKey, forteName]) => {
+    const primeForm = pfKey.split(",").map(Number);
+    return {
+      forteName,
+      primeForm,
+      pfLabel: `[${primeForm.join(",")}]`,
+    };
+  }
+);
+
+TRICHORD_OPTIONS.sort((a, b) => {
+  const nA = parseInt(a.forteName.split("-")[1], 10);
+  const nB = parseInt(b.forteName.split("-")[1], 10);
+  return nA - nB;
+});
+
 export default function TricordPage() {
-  const [input, setInput] = useState("C Eb G B");
+  const [selectedForte, setSelectedForte] = useState(
+    TRICHORD_OPTIONS[0].forteName
+  );
   const [maxSpan, setMaxSpan] = useState(DEFAULT_MAX_SPAN);
   const [selected, setSelected] = useState(0);
   const [showAll, setShowAll] = useState(true);
-  const [selectedSubset, setSelectedSubset] = useState(0);
+  const [showComplement, setShowComplement] = useState(false);
 
   const [connectionFilter, setConnectionFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
   const [displayMode, setDisplayMode] = useState("notes");
-  const [showPrimeForm, setShowPrimeForm] = useState(true);
-  const [showForte, setShowForte] = useState(true);
-  const [dedupe, setDedupe] = useState(false);
-  const [groupEquivalents, setGroupEquivalents] = useState(false);
   const [bassFilter, setBassFilter] = useState("all");
   const [transformMode, setTransformMode] = useState("base");
   const [transformAmount, setTransformAmount] = useState(0);
 
-  const parsed = useMemo(() => parseNotes(input), [input]);
+  const baseSet = useMemo(() => {
+    return (
+      TRICHORD_OPTIONS.find((item) => item.forteName === selectedForte) || null
+    );
+  }, [selectedForte]);
 
-  const subsets = useMemo(() => {
-    if (parsed.pcs.length < 3) return [];
-    return combinationsOfThree(parsed.pcs).map((subset) => {
-      const pf = primeForm(subset);
-      const key = pf.join(",");
-      return {
-        pcs: subset,
-        primeForm: pf,
-        forteName: TRICHORD_FORTE_MAP[key] || "n.d.",
-        label: pcsToLabel(subset),
-      };
-    });
-  }, [parsed]);
+  const activeSet = useMemo(() => {
+    if (!baseSet) return null;
 
-  const baseSubset = subsets[selectedSubset] || null;
-
-  const activeSubset = useMemo(() => {
-    if (!baseSubset) return null;
-
-    const transformed = transformPcs(
-      baseSubset.pcs,
+    const transformedPcs = transformPcs(
+      baseSet.primeForm,
       transformMode,
       transformAmount
     );
 
     const transformedPrimeForm = transformOrderedPrimeForm(
-      baseSubset.primeForm,
+      baseSet.primeForm,
       transformMode,
       transformAmount
     );
 
     const degreeMap = makeDegreeMapFromPrimeForm(
-      baseSubset.primeForm,
+      baseSet.primeForm,
       transformMode,
       transformAmount
     );
 
     return {
-      ...baseSubset,
-      transformedPcs: transformed,
+      forteName: baseSet.forteName,
+      primeForm: baseSet.primeForm,
+      transformedPcs,
       transformedPrimeForm,
       degreeMap,
       transformLabel: getTransformLabel(transformMode, transformAmount),
     };
-  }, [baseSubset, transformMode, transformAmount]);
+  }, [baseSet, transformMode, transformAmount]);
+
+  const complementData = useMemo(() => {
+    if (!activeSet) return null;
+    return complementFromPcs(activeSet.transformedPcs);
+  }, [activeSet]);
 
   const rawVoicings = useMemo(() => {
-    if (!activeSubset || activeSubset.transformedPcs.length !== 3) return [];
-    const pf = activeSubset.primeForm;
-    const forteName = activeSubset.forteName;
-    return findVoicings(activeSubset.transformedPcs, maxSpan).map((v) => ({
+    if (!activeSet || showComplement || activeSet.transformedPcs.length !== 3) {
+      return [];
+    }
+
+    return findVoicings(activeSet.transformedPcs, maxSpan).map((v) => ({
       ...v,
-      primeForm: pf,
-      forteName,
+      primeForm: activeSet.primeForm,
+      forteName: activeSet.forteName,
     }));
-  }, [activeSubset, maxSpan]);
+  }, [activeSet, maxSpan, showComplement]);
 
   const filteredVoicings = useMemo(() => {
     let list = [...rawVoicings];
@@ -108,29 +114,7 @@ export default function TricordPage() {
       list = list.filter((v) => v.stringPattern === groupFilter);
     }
 
-    list = filterByBassDegree(list, bassFilter, activeSubset?.degreeMap);
-
-    if (dedupe) {
-      const seen = new Set();
-      list = list.filter((v) => {
-        const key = makeStructuralKey(v);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    }
-
-    if (groupEquivalents) {
-      const seen = new Set();
-      list = list.filter((v) => {
-        const key = `${v.stringPattern}|${v.positions
-          .map((p) => p.pc)
-          .join(",")}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    }
+    list = filterByBassDegree(list, bassFilter, activeSet?.degreeMap);
 
     list.sort((a, b) => {
       if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
@@ -144,9 +128,7 @@ export default function TricordPage() {
     connectionFilter,
     groupFilter,
     bassFilter,
-    dedupe,
-    groupEquivalents,
-    activeSubset,
+    activeSet,
   ]);
 
   const selectedVoicing = filteredVoicings[selected] || null;
@@ -159,14 +141,12 @@ export default function TricordPage() {
   useEffect(() => {
     setSelected(0);
   }, [
-    selectedSubset,
+    selectedForte,
     maxSpan,
     connectionFilter,
     groupFilter,
     bassFilter,
     displayMode,
-    dedupe,
-    groupEquivalents,
     transformMode,
     transformAmount,
   ]);
@@ -174,13 +154,11 @@ export default function TricordPage() {
   useEffect(() => {
     setShowAll(true);
   }, [
-    selectedSubset,
+    selectedForte,
     maxSpan,
     connectionFilter,
     groupFilter,
     bassFilter,
-    dedupe,
-    groupEquivalents,
     transformMode,
     transformAmount,
   ]);
@@ -206,8 +184,8 @@ export default function TricordPage() {
         >
           <h1 style={{ marginTop: 0 }}>Visualizzatore tricordi su chitarra</h1>
           <p>
-            Versione completa: inserisci 3 o più note, scegli il sottoinsieme di
-            3, filtra le forme e separa rivolti da trasformazioni Tn/TnI.
+            Pagina uniformata alle altre: seleziona direttamente un tricordo di
+            Allen Forte e visualizzane le forme sul manico.
           </p>
 
           <div
@@ -226,30 +204,31 @@ export default function TricordPage() {
                   fontWeight: "bold",
                 }}
               >
-                Note inserite
+                Tricordo Forte
               </label>
-              <input
-                value={input}
+              <select
+                value={selectedForte}
                 onChange={(e) => {
-                  setInput(e.target.value);
+                  setSelectedForte(e.target.value);
                   setSelected(0);
-                  setSelectedSubset(0);
                   setShowAll(true);
+                  setShowComplement(false);
                 }}
-                placeholder="Es. C Eb G B"
                 style={{
                   width: "100%",
                   padding: "12px",
                   borderRadius: "12px",
                   border: "1px solid #ccc",
                   fontSize: "16px",
+                  background: "white",
                 }}
-              />
-              <div
-                style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}
               >
-                Formati accettati: C C# Db D Eb E F F# Gb G Ab A Bb B
-              </div>
+                {TRICHORD_OPTIONS.map((item) => (
+                  <option key={item.forteName} value={item.forteName}>
+                    {item.forteName} | PF {item.pfLabel}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -277,220 +256,137 @@ export default function TricordPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: "16px" }}>
-            {subsets.length > 0 && (
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Sottoinsieme di 3 note
-                </label>
-                <select
-                  value={selectedSubset}
-                  onChange={(e) => {
-                    setSelectedSubset(Number(e.target.value));
+          <div
+            style={{
+              marginTop: "16px",
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            <PillButton
+              active={!showComplement}
+              onClick={() => setShowComplement(false)}
+            >
+              Mostra tricordo
+            </PillButton>
+            <PillButton
+              active={showComplement}
+              onClick={() => setShowComplement(true)}
+            >
+              Mostra complementare
+            </PillButton>
+          </div>
+
+          {!showComplement && (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "14px",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  marginTop: "16px",
+                }}
+              >
+                <div>
+                  <SectionTitle>Filtro connessione corde</SectionTitle>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <PillButton
+                      active={connectionFilter === "all"}
+                      onClick={() => setConnectionFilter("all")}
+                    >
+                      Tutte
+                    </PillButton>
+                    <PillButton
+                      active={connectionFilter === "adjacent"}
+                      onClick={() => setConnectionFilter("adjacent")}
+                    >
+                      Solo adiacenti
+                    </PillButton>
+                    <PillButton
+                      active={connectionFilter === "skips"}
+                      onClick={() => setConnectionFilter("skips")}
+                    >
+                      Solo salti
+                    </PillButton>
+                  </div>
+                </div>
+
+                <div>
+                  <SectionTitle>Gruppo corde</SectionTitle>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <PillButton
+                      active={groupFilter === "all"}
+                      onClick={() => setGroupFilter("all")}
+                    >
+                      Tutti
+                    </PillButton>
+                    {availableGroupPatterns.map((pattern) => (
+                      <PillButton
+                        key={pattern}
+                        active={groupFilter === pattern}
+                        onClick={() => setGroupFilter(pattern)}
+                      >
+                        {pattern}
+                      </PillButton>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <SectionTitle>Vista</SectionTitle>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <PillButton
+                      active={displayMode === "notes"}
+                      onClick={() => setDisplayMode("notes")}
+                    >
+                      Note
+                    </PillButton>
+                    <PillButton
+                      active={displayMode === "degrees"}
+                      onClick={() => setDisplayMode("degrees")}
+                    >
+                      Gradi 1-2-3
+                    </PillButton>
+                  </div>
+                </div>
+
+                <BassButtons
+                  noteCount={3}
+                  value={bassFilter}
+                  onChange={setBassFilter}
+                />
+
+                <TransformButtons
+                  mode={transformMode}
+                  setMode={(m) => {
+                    setTransformMode(m);
                     setSelected(0);
                     setShowAll(true);
                   }}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: "12px",
-                    border: "1px solid #ccc",
-                    fontSize: "16px",
-                    background: "white",
+                  amount={transformAmount}
+                  setAmount={(n) => {
+                    setTransformAmount(n);
+                    setSelected(0);
+                    setShowAll(true);
                   }}
+                />
+              </div>
+
+              <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
+                <label
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  {subsets.map((subset, idx) => (
-                    <option key={idx} value={idx}>
-                      {subset.label} | PF [{subset.primeForm.join(",")}] |{" "}
-                      {subset.forteName}
-                    </option>
-                  ))}
-                </select>
+                  <input
+                    type="checkbox"
+                    checked={showAll}
+                    onChange={(e) => setShowAll(e.target.checked)}
+                  />
+                  Mostra tutte le forme insieme sul manico
+                </label>
               </div>
-            )}
-
-            <div
-              style={{
-                display: "grid",
-                gap: "14px",
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              }}
-            >
-              <div>
-                <SectionTitle>Filtro connessione corde</SectionTitle>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <PillButton
-                    active={connectionFilter === "all"}
-                    onClick={() => setConnectionFilter("all")}
-                  >
-                    Tutte
-                  </PillButton>
-                  <PillButton
-                    active={connectionFilter === "adjacent"}
-                    onClick={() => setConnectionFilter("adjacent")}
-                  >
-                    Solo adiacenti
-                  </PillButton>
-                  <PillButton
-                    active={connectionFilter === "skips"}
-                    onClick={() => setConnectionFilter("skips")}
-                  >
-                    Solo salti
-                  </PillButton>
-                </div>
-              </div>
-
-              <div>
-                <SectionTitle>Gruppo corde</SectionTitle>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <PillButton
-                    active={groupFilter === "all"}
-                    onClick={() => setGroupFilter("all")}
-                  >
-                    Tutti
-                  </PillButton>
-                  {availableGroupPatterns.map((pattern) => (
-                    <PillButton
-                      key={pattern}
-                      active={groupFilter === pattern}
-                      onClick={() => setGroupFilter(pattern)}
-                    >
-                      {pattern}
-                    </PillButton>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <SectionTitle>Vista</SectionTitle>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <PillButton
-                    active={displayMode === "notes"}
-                    onClick={() => setDisplayMode("notes")}
-                  >
-                    Note
-                  </PillButton>
-                  <PillButton
-                    active={displayMode === "degrees"}
-                    onClick={() => setDisplayMode("degrees")}
-                  >
-                    Gradi 1-2-3
-                  </PillButton>
-                </div>
-              </div>
-
-              <BassButtons
-                noteCount={3}
-                value={bassFilter}
-                onChange={setBassFilter}
-              />
-
-              <TransformButtons
-                mode={transformMode}
-                setMode={(m) => {
-                  setTransformMode(m);
-                  setSelected(0);
-                  setShowAll(true);
-                }}
-                amount={transformAmount}
-                setAmount={(n) => {
-                  setTransformAmount(n);
-                  setSelected(0);
-                  setShowAll(true);
-                }}
-              />
-            </div>
-
-            <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={showAll}
-                  onChange={(e) => setShowAll(e.target.checked)}
-                />
-                Mostra tutte le forme insieme sul manico
-              </label>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={showPrimeForm}
-                  onChange={(e) => setShowPrimeForm(e.target.checked)}
-                />
-                Mostra prime form
-              </label>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={showForte}
-                  onChange={(e) => setShowForte(e.target.checked)}
-                />
-                Mostra nome Forte
-              </label>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={dedupe}
-                  onChange={(e) => setDedupe(e.target.checked)}
-                />
-                Elimina doppioni strutturali
-              </label>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={groupEquivalents}
-                  onChange={(e) => setGroupEquivalents(e.target.checked)}
-                />
-                Raggruppa equivalenti per ordine di pitch classes sulle stesse
-                corde
-              </label>
-            </div>
-          </div>
-
-          <div style={{ marginTop: "16px" }}>
-            {parsed.invalid.length > 0 && (
-              <div
-                style={{
-                  padding: "12px",
-                  borderRadius: "12px",
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  color: "#b91c1c",
-                }}
-              >
-                Note non riconosciute: {parsed.invalid.join(", ")}
-              </div>
-            )}
-
-            {parsed.invalid.length === 0 && parsed.pcs.length < 3 && (
-              <div
-                style={{
-                  padding: "12px",
-                  borderRadius: "12px",
-                  background: "#fffbeb",
-                  border: "1px solid #fde68a",
-                  color: "#92400e",
-                }}
-              >
-                Inserisci almeno 3 note diverse.
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
         <div
@@ -509,58 +405,79 @@ export default function TricordPage() {
             }}
           >
             <h2>Manico</h2>
-            <p style={{ color: "#666" }}>
-              Le caselle grigie appartengono al sottoinsieme trasformato. Le
-              caselle nere mostrano la forma selezionata, oppure tutte le forme
-              se l’opzione è attiva.
-            </p>
 
-            {activeSubset && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Trasformazione attiva: {activeSubset.transformLabel}
-              </div>
+            {!showComplement ? (
+              <>
+                <p style={{ color: "#666" }}>
+                  Le caselle grigie appartengono al tricordo trasformato. Le
+                  caselle nere mostrano la forma selezionata, oppure tutte le
+                  forme se l’opzione è attiva.
+                </p>
+
+                {activeSet && (
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: "#555",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    Trasformazione attiva: {activeSet.transformLabel}
+                  </div>
+                )}
+
+                {activeSet && (
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: "#555",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    Prime form del tricordo: [{activeSet.primeForm.join(",")}]
+                    {" | "}trasformata ordinata: [
+                    {activeSet.transformedPrimeForm.join(",")}]
+                  </div>
+                )}
+
+                {activeSet && (
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: "#555",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    Nome Forte del tricordo: {activeSet.forteName}
+                  </div>
+                )}
+
+                <Fretboard
+                  voicing={selectedVoicing}
+                  allTargetPcs={activeSet ? activeSet.transformedPcs : []}
+                  allVoicings={filteredVoicings}
+                  showAll={showAll}
+                  displayMode={displayMode}
+                  degreeMap={activeSet?.degreeMap}
+                />
+              </>
+            ) : (
+              <>
+                <p style={{ color: "#666" }}>
+                  Le caselle nere mostrano il complementare della trasformazione
+                  attiva del tricordo.
+                </p>
+                <Fretboard
+                  voicing={null}
+                  allTargetPcs={complementData ? complementData.pcs : []}
+                  allVoicings={[]}
+                  showAll={false}
+                  displayMode="notes"
+                  degreeMap={null}
+                  highlightAllAsActive={true}
+                />
+              </>
             )}
-
-            {activeSubset && showPrimeForm && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Prime form del sottoinsieme: [{activeSubset.primeForm.join(",")}]
-                {" | "}
-                trasformata ordinata: [{activeSubset.transformedPrimeForm.join(",")}]
-              </div>
-            )}
-
-            {activeSubset && showForte && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Nome Forte del sottoinsieme: {activeSubset.forteName}
-              </div>
-            )}
-
-            <Fretboard
-              voicing={selectedVoicing}
-              allTargetPcs={activeSubset ? activeSubset.transformedPcs : []}
-              allVoicings={filteredVoicings}
-              showAll={showAll}
-              displayMode={displayMode}
-              degreeMap={activeSubset?.degreeMap}
-            />
           </div>
 
           <div
@@ -571,38 +488,104 @@ export default function TricordPage() {
               border: "1px solid #ddd",
             }}
           >
-            <h2>Possibilità trovate</h2>
-            <p style={{ color: "#666" }}>
-              {filteredVoicings.length} forme complessive per il sottoinsieme
-              selezionato.
-            </p>
+            {!showComplement ? (
+              <>
+                <h2>Possibilità trovate</h2>
+                <p style={{ color: "#666" }}>
+                  {filteredVoicings.length} forme complessive per il tricordo
+                  selezionato.
+                </p>
 
-            <div
-              style={{
-                maxHeight: "760px",
-                overflowY: "auto",
-                marginTop: "16px",
-              }}
-            >
-              {filteredVoicings.map((v, i) => (
-                <VoicingCard
-                  key={`${selectedSubset}-${i}-${v.positions
-                    .map((p) => `${p.stringIndex}-${p.fret}`)
-                    .join("-")}`}
-                  voicing={v}
-                  index={i}
-                  selected={i === selected}
-                  onSelect={() => {
-                    setSelected(i);
-                    if (showAll) setShowAll(false);
+                <div
+                  style={{
+                    maxHeight: "760px",
+                    overflowY: "auto",
+                    marginTop: "16px",
                   }}
-                  displayMode={displayMode}
-                  showPrimeForm={showPrimeForm}
-                  showForte={showForte}
-                  degreeMap={activeSubset?.degreeMap}
-                />
-              ))}
-            </div>
+                >
+                  {filteredVoicings.map((v, i) => (
+                    <VoicingCard
+                      key={`${selectedForte}-${i}-${v.positions
+                        .map((p) => `${p.stringIndex}-${p.fret}`)
+                        .join("-")}`}
+                      voicing={v}
+                      index={i}
+                      selected={i === selected}
+                      onSelect={() => {
+                        setSelected(i);
+                        if (showAll) setShowAll(false);
+                      }}
+                      displayMode={displayMode}
+                      showPrimeForm={true}
+                      showForte={true}
+                      degreeMap={activeSet?.degreeMap}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Dettagli analitici</h2>
+
+                {activeSet && complementData && (
+                  <div style={{ marginTop: "12px", lineHeight: 1.8 }}>
+                    <div>
+                      <strong>Tricordo di partenza:</strong> {activeSet.forteName}
+                    </div>
+                    <div>
+                      <strong>Trasformazione attiva:</strong>{" "}
+                      {activeSet.transformLabel}
+                    </div>
+                    <div>
+                      <strong>Prime form:</strong> ({activeSet.primeForm.join("")})
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: "18px",
+                        padding: "12px",
+                        borderRadius: "12px",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <div>
+                        <strong>Complementare:</strong> {complementData.forte}
+                      </div>
+                      <div>
+                        <strong>Prime form:</strong> ({complementData.pf})
+                      </div>
+                      <div>
+                        <strong>Vettore intervallare:</strong> ⟨
+                        {complementData.iv.split("").join(",")}⟩
+                      </div>
+                      <div>
+                        <strong>Pitch classes:</strong>{" "}
+                        {complementData.pcs
+                          .map((pc) => {
+                            const names = [
+                              "C",
+                              "C#",
+                              "D",
+                              "Eb",
+                              "E",
+                              "F",
+                              "F#",
+                              "G",
+                              "Ab",
+                              "A",
+                              "Bb",
+                              "B",
+                            ];
+                            return names[pc];
+                          })
+                          .join(" – ")}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

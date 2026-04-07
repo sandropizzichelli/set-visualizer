@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { DEFAULT_MAX_SPAN, PC_TO_NAME } from "./setData";
 import {
   parsePfString,
@@ -7,7 +7,6 @@ import {
   makeDegreeMapFromPrimeForm,
   getTransformLabel,
   complementFromPcs,
-  makeStructuralKey,
   filterByBassDegree,
 } from "./setUtils";
 import Fretboard from "./Fretboard";
@@ -40,14 +39,42 @@ export default function GenericSetPage({
   const [connectionFilter, setConnectionFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
   const [displayMode, setDisplayMode] = useState("notes");
-  const [showPrimeForm, setShowPrimeForm] = useState(true);
-  const [showForte, setShowForte] = useState(true);
-  const [dedupe, setDedupe] = useState(false);
-  const [groupEquivalents, setGroupEquivalents] = useState(false);
   const [hideEmptyStrings, setHideEmptyStrings] = useState(false);
   const [bassFilter, setBassFilter] = useState("all");
   const [transformMode, setTransformMode] = useState("base");
   const [transformAmount, setTransformAmount] = useState(0);
+
+  const sortedKeys = useMemo(() => {
+    return [...keys].sort((a, b) => {
+      const parseKey = (key) => {
+        const [cardinality, rest] = key.split("-");
+        const isZ = rest.startsWith("Z");
+        const number = parseInt(rest.replace("Z", ""), 10);
+        return {
+          cardinality: parseInt(cardinality, 10),
+          isZ,
+          number,
+        };
+      };
+
+      const A = parseKey(a);
+      const B = parseKey(b);
+
+      if (A.cardinality !== B.cardinality) {
+        return A.cardinality - B.cardinality;
+      }
+
+      if (A.number !== B.number) {
+        return A.number - B.number;
+      }
+
+      if (A.isZ !== B.isZ) {
+        return A.isZ ? 1 : -1;
+      }
+
+      return a.localeCompare(b);
+    });
+  }, [keys]);
 
   const setDataRaw = dataMap[selectedForte] || null;
 
@@ -105,53 +132,52 @@ export default function GenericSetPage({
 
     if (connectionFilter === "adjacent") list = list.filter((v) => !v.hasSkip);
     if (connectionFilter === "skips") list = list.filter((v) => v.hasSkip);
-    if (groupFilter !== "all")
+    if (groupFilter !== "all") {
       list = list.filter((v) => v.stringPattern === groupFilter);
+    }
 
     list = filterByBassDegree(list, bassFilter, activeSet?.degreeMap);
 
-    if (dedupe) {
-      const seen = new Set();
-      list = list.filter((v) => {
-        const key = makeStructuralKey(v);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    }
+    list.sort((a, b) => {
+      if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
+      if (a.span !== b.span) return a.span - b.span;
+      return a.stringPattern.localeCompare(b.stringPattern);
+    });
 
-    if (groupEquivalents) {
-      const seen = new Set();
-      list = list.filter((v) => {
-        const key = `${v.stringPattern}|${v.positions
-          .map((p) => p.pc)
-          .join(",")}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    }
-list.sort((a, b) => {
-  if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
-  if (a.span !== b.span) return a.span - b.span;
-  return a.stringPattern.localeCompare(b.stringPattern);
-});
     return list;
-  }, [
-  rawVoicings,
-  connectionFilter,
-  groupFilter,
-  bassFilter,
-  dedupe,
-  groupEquivalents,
-  activeSet,
-]);
+  }, [rawVoicings, connectionFilter, groupFilter, bassFilter, activeSet]);
 
   const selectedVoicing = filteredVoicings[selected] || null;
+
   const availableGroupPatterns = useMemo(() => {
     const set = new Set(rawVoicings.map((v) => v.stringPattern));
     return [...set].sort();
   }, [rawVoicings]);
+
+  useEffect(() => {
+    setSelected(0);
+  }, [
+    selectedForte,
+    maxSpan,
+    connectionFilter,
+    groupFilter,
+    bassFilter,
+    displayMode,
+    transformMode,
+    transformAmount,
+  ]);
+
+  useEffect(() => {
+    setShowAll(true);
+  }, [
+    selectedForte,
+    maxSpan,
+    connectionFilter,
+    groupFilter,
+    bassFilter,
+    transformMode,
+    transformAmount,
+  ]);
 
   return (
     <div
@@ -210,7 +236,7 @@ list.sort((a, b) => {
                   background: "white",
                 }}
               >
-                {keys.map((key) => (
+                {sortedKeys.map((key) => (
                   <option key={key} value={key}>
                     {key} | PF ({dataMap[key].pf}) | IV {dataMap[key].iv}
                   </option>
@@ -323,6 +349,7 @@ list.sort((a, b) => {
                     ))}
                   </div>
                 </div>
+
                 <div>
                   <SectionTitle>Vista</SectionTitle>
                   <div
@@ -375,47 +402,6 @@ list.sort((a, b) => {
                     onChange={(e) => setShowAll(e.target.checked)}
                   />
                   Mostra tutte le forme insieme sul manico
-                </label>
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={showPrimeForm}
-                    onChange={(e) => setShowPrimeForm(e.target.checked)}
-                  />
-                  Mostra prime form
-                </label>
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={showForte}
-                    onChange={(e) => setShowForte(e.target.checked)}
-                  />
-                  Mostra nome Forte
-                </label>
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={dedupe}
-                    onChange={(e) => setDedupe(e.target.checked)}
-                  />
-                  Elimina doppioni strutturali
-                </label>
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={groupEquivalents}
-                    onChange={(e) => setGroupEquivalents(e.target.checked)}
-                  />
-                  Raggruppa equivalenti per ordine di pitch classes sulle stesse
-                  corde
                 </label>
               </div>
             </>
@@ -472,7 +458,7 @@ list.sort((a, b) => {
                   </div>
                 )}
 
-                {activeSet && showPrimeForm && (
+                {activeSet && (
                   <div
                     style={{
                       fontSize: "13px",
@@ -481,12 +467,12 @@ list.sort((a, b) => {
                     }}
                   >
                     Prime form del {noteName}: [{activeSet.primeForm.join(",")}]
-                    {" | "}
-                    trasformata ordinata: [{activeSet.transformedPrimeForm.join(",")}]
+                    {" | "}trasformata ordinata: [
+                    {activeSet.transformedPrimeForm.join(",")}]
                   </div>
                 )}
 
-                {activeSet && showForte && (
+                {activeSet && (
                   <div
                     style={{
                       fontSize: "13px",
@@ -564,8 +550,8 @@ list.sort((a, b) => {
                         if (showAll) setShowAll(false);
                       }}
                       displayMode={displayMode}
-                      showPrimeForm={showPrimeForm}
-                      showForte={showForte}
+                      showPrimeForm={true}
+                      showForte={true}
                       degreeMap={activeSet?.degreeMap}
                     />
                   ))}
