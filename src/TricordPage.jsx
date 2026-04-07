@@ -43,6 +43,7 @@ export default function TricordPage() {
   const [selected, setSelected] = useState(0);
   const [showAll, setShowAll] = useState(true);
   const [showComplement, setShowComplement] = useState(false);
+  const [excludeOpenStrings, setExcludeOpenStrings] = useState(false);
 
   const [connectionFilter, setConnectionFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
@@ -108,6 +109,10 @@ export default function TricordPage() {
   const filteredVoicings = useMemo(() => {
     let list = [...rawVoicings];
 
+    if (excludeOpenStrings) {
+      list = list.filter((v) => v.positions.every((p) => p.fret > 0));
+    }
+
     if (connectionFilter === "adjacent") list = list.filter((v) => !v.hasSkip);
     if (connectionFilter === "skips") list = list.filter((v) => v.hasSkip);
     if (groupFilter !== "all") {
@@ -125,6 +130,7 @@ export default function TricordPage() {
     return list;
   }, [
     rawVoicings,
+    excludeOpenStrings,
     connectionFilter,
     groupFilter,
     bassFilter,
@@ -143,6 +149,7 @@ export default function TricordPage() {
   }, [
     selectedForte,
     maxSpan,
+    excludeOpenStrings,
     connectionFilter,
     groupFilter,
     bassFilter,
@@ -156,6 +163,7 @@ export default function TricordPage() {
   }, [
     selectedForte,
     maxSpan,
+    excludeOpenStrings,
     connectionFilter,
     groupFilter,
     bassFilter,
@@ -383,6 +391,17 @@ export default function TricordPage() {
                     onChange={(e) => setShowAll(e.target.checked)}
                   />
                   Mostra tutte le forme insieme sul manico
+                </label>
+
+                <label
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={excludeOpenStrings}
+                    onChange={(e) => setExcludeOpenStrings(e.target.checked)}
+                  />
+                  Escludi corde vuote
                 </label>
               </div>
             </>
