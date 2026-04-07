@@ -1,46 +1,17 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
-  STRINGS,
-  DISPLAY_STRINGS,
-  NOTE_TO_PC,
-  PC_TO_NAME,
-  FRET_COUNT,
-  DEFAULT_MAX_SPAN,
-  TRICHORD_FORTE_MAP,
-  ALL_3_STRING_GROUPS,
-  ALL_4_STRING_GROUPS,
-  ALL_5_STRING_GROUPS,
-  ALL_6_STRING_GROUPS,
   TETRACHORD_KEYS,
   PENTACHORD_KEYS,
   HEXACHORD_KEYS,
   FORTE_4_8_DATA,
   FORTE_5_7_DATA,
   FORTE_6_DATA,
-  FORTE_REFERENCE,
 } from "./setData";
 import {
-  parseNotes,
-  combinationsOfThree,
-  primeForm,
-  pcsToLabel,
-  transformPcs,
-  getTransformLabel,
-  transformOrderedPrimeForm,
-  makeDegreeMapFromPrimeForm,
-  parsePfString,
-  complementFromPcs,
-  makeStructuralKey,
-  getBassDegree,
-  filterByBassDegree,
-  findVoicings,
   findTetrachordVoicings,
   findPentachordVoicings,
   findHexachordVoicings,
-  pcAt,
 } from "./setUtils";
-import Fretboard from "./Fretboard";
-import VoicingCard from "./VoicingCard";
 import GenericSetPage from "./GenericSetPage";
 import TricordPage from "./TricordPage";
 
@@ -61,6 +32,7 @@ function PillButton({ active, onClick, children }) {
     </button>
   );
 }
+
 function TetrachordPage() {
   return (
     <GenericSetPage
