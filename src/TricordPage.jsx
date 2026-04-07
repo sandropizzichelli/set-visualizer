@@ -1,8 +1,5 @@
-import React, { useMemo, useState } from "react";
-import {
-  DEFAULT_MAX_SPAN,
-  TRICHORD_FORTE_MAP,
-} from "./setData";
+import React, { useEffect, useMemo, useState } from "react";
+import { DEFAULT_MAX_SPAN, TRICHORD_FORTE_MAP } from "./setData";
 import {
   parseNotes,
   combinationsOfThree,
@@ -24,6 +21,7 @@ import {
   BassButtons,
   TransformButtons,
 } from "./SetControls";
+
 export default function TricordPage() {
   const [input, setInput] = useState("C Eb G B");
   const [maxSpan, setMaxSpan] = useState(DEFAULT_MAX_SPAN);
@@ -106,8 +104,9 @@ export default function TricordPage() {
 
     if (connectionFilter === "adjacent") list = list.filter((v) => !v.hasSkip);
     if (connectionFilter === "skips") list = list.filter((v) => v.hasSkip);
-    if (groupFilter !== "all")
+    if (groupFilter !== "all") {
       list = list.filter((v) => v.stringPattern === groupFilter);
+    }
 
     list = filterByBassDegree(list, bassFilter, activeSubset?.degreeMap);
 
@@ -133,28 +132,58 @@ export default function TricordPage() {
       });
     }
 
-   list.sort((a, b) => {
-  if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
-  if (a.span !== b.span) return a.span - b.span;
-  return a.stringPattern.localeCompare(b.stringPattern);
-});
+    list.sort((a, b) => {
+      if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
+      if (a.span !== b.span) return a.span - b.span;
+      return a.stringPattern.localeCompare(b.stringPattern);
+    });
 
     return list;
-  },[
-  rawVoicings,
-  connectionFilter,
-  groupFilter,
-  bassFilter,
-  dedupe,
-  groupEquivalents,
-  activeSubset,
-]);
+  }, [
+    rawVoicings,
+    connectionFilter,
+    groupFilter,
+    bassFilter,
+    dedupe,
+    groupEquivalents,
+    activeSubset,
+  ]);
 
   const selectedVoicing = filteredVoicings[selected] || null;
+
   const availableGroupPatterns = useMemo(() => {
     const set = new Set(rawVoicings.map((v) => v.stringPattern));
     return [...set].sort();
   }, [rawVoicings]);
+
+  useEffect(() => {
+    setSelected(0);
+  }, [
+    selectedSubset,
+    maxSpan,
+    connectionFilter,
+    groupFilter,
+    bassFilter,
+    displayMode,
+    dedupe,
+    groupEquivalents,
+    transformMode,
+    transformAmount,
+  ]);
+
+  useEffect(() => {
+    setShowAll(true);
+  }, [
+    selectedSubset,
+    maxSpan,
+    connectionFilter,
+    groupFilter,
+    bassFilter,
+    dedupe,
+    groupEquivalents,
+    transformMode,
+    transformAmount,
+  ]);
 
   return (
     <div
@@ -177,7 +206,8 @@ export default function TricordPage() {
         >
           <h1 style={{ marginTop: 0 }}>Visualizzatore tricordi su chitarra</h1>
           <p>
-           Versione completa: inserisci 3 o più note, scegli il sottoinsieme di 3, filtra le forme e separa rivolti da trasformazioni Tn/TnI.
+            Versione completa: inserisci 3 o più note, scegli il sottoinsieme di
+            3, filtra le forme e separa rivolti da trasformazioni Tn/TnI.
           </p>
 
           <div
@@ -336,6 +366,7 @@ export default function TricordPage() {
                   ))}
                 </div>
               </div>
+
               <div>
                 <SectionTitle>Vista</SectionTitle>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -576,23 +607,5 @@ export default function TricordPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-
-function TetrachordPage() {
-  return (
-    <GenericSetPage
-      title="Visualizzatore tetracordi su chitarra"
-      description="Pagina separata dai tricordi. Qui lavori solo con i set a 4 note di Allen Forte."
-      keyLabel="Tetracordo Forte"
-      keys={TETRACHORD_KEYS}
-      dataMap={FORTE_4_8_DATA}
-      findVoicingFn={findTetrachordVoicings}
-      noteName="tetracordo"
-      complementName="Complementare"
-      degreeButtonLabel="Gradi 1-2-3-4"
-      noteCount={4}
-    />
   );
 }
