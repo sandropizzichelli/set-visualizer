@@ -1075,7 +1075,6 @@ function TricordPage() {
 
   const [connectionFilter, setConnectionFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
-  const [sortMode, setSortMode] = useState("fret");
   const [displayMode, setDisplayMode] = useState("notes");
   const [showPrimeForm, setShowPrimeForm] = useState(true);
   const [showForte, setShowForte] = useState(true);
@@ -1176,38 +1175,22 @@ function TricordPage() {
       });
     }
 
-    list.sort((a, b) => {
-      if (sortMode === "span") {
-        if (a.span !== b.span) return a.span - b.span;
-        return a.lowestFret - b.lowestFret;
-      }
-      if (sortMode === "strings") {
-        if (a.stringPattern !== b.stringPattern)
-          return a.stringPattern.localeCompare(b.stringPattern);
-        return a.lowestFret - b.lowestFret;
-      }
-      if (sortMode === "bass") {
-        const bassA = getLowestPc(a);
-        const bassB = getLowestPc(b);
-        if (bassA !== bassB) return bassA - bassB;
-        return a.lowestFret - b.lowestFret;
-      }
-      if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
-      if (a.span !== b.span) return a.span - b.span;
-      return a.stringPattern.localeCompare(b.stringPattern);
-    });
+   list.sort((a, b) => {
+  if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
+  if (a.span !== b.span) return a.span - b.span;
+  return a.stringPattern.localeCompare(b.stringPattern);
+});
 
     return list;
-  }, [
-    rawVoicings,
-    connectionFilter,
-    groupFilter,
-    bassFilter,
-    dedupe,
-    groupEquivalents,
-    sortMode,
-    activeSubset,
-  ]);
+  },[
+  rawVoicings,
+  connectionFilter,
+  groupFilter,
+  bassFilter,
+  dedupe,
+  groupEquivalents,
+  activeSubset,
+]);
 
   const selectedVoicing = filteredVoicings[selected] || null;
   const availableGroupPatterns = useMemo(() => {
@@ -1397,37 +1380,6 @@ function TricordPage() {
                   ))}
                 </div>
               </div>
-
-              <div>
-                <SectionTitle>Ordinamento</SectionTitle>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <PillButton
-                    active={sortMode === "fret"}
-                    onClick={() => setSortMode("fret")}
-                  >
-                    Per tasto
-                  </PillButton>
-                  <PillButton
-                    active={sortMode === "span"}
-                    onClick={() => setSortMode("span")}
-                  >
-                    Per apertura
-                  </PillButton>
-                  <PillButton
-                    active={sortMode === "strings"}
-                    onClick={() => setSortMode("strings")}
-                  >
-                    Per corde
-                  </PillButton>
-                  <PillButton
-                    active={sortMode === "bass"}
-                    onClick={() => setSortMode("bass")}
-                  >
-                    Per basso
-                  </PillButton>
-                </div>
-              </div>
-
               <div>
                 <SectionTitle>Vista</SectionTitle>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -1691,7 +1643,6 @@ function GenericSetPage({
 
   const [connectionFilter, setConnectionFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
-  const [sortMode, setSortMode] = useState("fret");
   const [displayMode, setDisplayMode] = useState("notes");
   const [showPrimeForm, setShowPrimeForm] = useState(true);
   const [showForte, setShowForte] = useState(true);
@@ -1784,39 +1735,21 @@ function GenericSetPage({
         return true;
       });
     }
-
-    list.sort((a, b) => {
-      if (sortMode === "span") {
-        if (a.span !== b.span) return a.span - b.span;
-        return a.lowestFret - b.lowestFret;
-      }
-      if (sortMode === "strings") {
-        if (a.stringPattern !== b.stringPattern)
-          return a.stringPattern.localeCompare(b.stringPattern);
-        return a.lowestFret - b.lowestFret;
-      }
-      if (sortMode === "bass") {
-        const bassA = getLowestPc(a);
-        const bassB = getLowestPc(b);
-        if (bassA !== bassB) return bassA - bassB;
-        return a.lowestFret - b.lowestFret;
-      }
-      if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
-      if (a.span !== b.span) return a.span - b.span;
-      return a.stringPattern.localeCompare(b.stringPattern);
-    });
-
+list.sort((a, b) => {
+  if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
+  if (a.span !== b.span) return a.span - b.span;
+  return a.stringPattern.localeCompare(b.stringPattern);
+});
     return list;
   }, [
-    rawVoicings,
-    connectionFilter,
-    groupFilter,
-    bassFilter,
-    dedupe,
-    groupEquivalents,
-    sortMode,
-    activeSet,
-  ]);
+  rawVoicings,
+  connectionFilter,
+  groupFilter,
+  bassFilter,
+  dedupe,
+  groupEquivalents,
+  activeSet,
+]);
 
   const selectedVoicing = filteredVoicings[selected] || null;
   const availableGroupPatterns = useMemo(() => {
@@ -1994,39 +1927,6 @@ function GenericSetPage({
                     ))}
                   </div>
                 </div>
-
-                <div>
-                  <SectionTitle>Ordinamento</SectionTitle>
-                  <div
-                    style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                  >
-                    <PillButton
-                      active={sortMode === "fret"}
-                      onClick={() => setSortMode("fret")}
-                    >
-                      Per tasto
-                    </PillButton>
-                    <PillButton
-                      active={sortMode === "span"}
-                      onClick={() => setSortMode("span")}
-                    >
-                      Per apertura
-                    </PillButton>
-                    <PillButton
-                      active={sortMode === "strings"}
-                      onClick={() => setSortMode("strings")}
-                    >
-                      Per corde
-                    </PillButton>
-                    <PillButton
-                      active={sortMode === "bass"}
-                      onClick={() => setSortMode("bass")}
-                    >
-                      Per basso
-                    </PillButton>
-                  </div>
-                </div>
-
                 <div>
                   <SectionTitle>Vista</SectionTitle>
                   <div
