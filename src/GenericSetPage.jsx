@@ -10,6 +10,11 @@ import {
   filterByBassDegree,
   getSubsetClasses,
   getSupersetClasses,
+  primeForm,
+  findVoicings,
+  findTetrachordVoicings,
+  findPentachordVoicings,
+  findHexachordVoicings,
 } from "./setUtils";
 import Fretboard from "./Fretboard";
 import VoicingCard from "./VoicingCard";
@@ -19,6 +24,84 @@ import {
   BassButtons,
   TransformButtons,
 } from "./SetControls";
+
+function getCardinalityLabel(n) {
+  const labels = {
+    3: "Tricordi",
+    4: "Tetracordi",
+    5: "Pentacordi",
+    6: "Esacordi",
+    7: "Eptacordi",
+    8: "Ottacordi",
+    9: "Enneacordi",
+    10: "Decacordi",
+    11: "Undecacordi",
+    12: "Dodecacordi",
+  };
+
+  return labels[n] || `Cardinalità ${n}`;
+}
+
+function getClassKey(item) {
+  return `${item.forteName || "n.d."}|${item.primeForm.join("-")}`;
+}
+
+function getVoicingFinderByCardinality(cardinality) {
+  if (cardinality === 3) return findVoicings;
+  if (cardinality === 4) return findTetrachordVoicings;
+  if (cardinality === 5) return findPentachordVoicings;
+  if (cardinality === 6) return findHexachordVoicings;
+  return null;
+}
+
+function ClassResultRow({ item, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%",
+        padding: "12px 14px",
+        borderRadius: "12px",
+        border: active ? "2px solid #111" : "1px solid #ddd",
+        background: active ? "#e2e8f0" : "white",
+        marginBottom: "10px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "12px",
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+    >
+      <div>
+        <div style={{ fontWeight: "bold", fontSize: "15px" }}>
+          {item.forteName || "n.d."}
+        </div>
+        <div
+          style={{
+            marginTop: "4px",
+            fontSize: "12px",
+            color: "#666",
+          }}
+        >
+          PF [{item.primeForm.join(",")}]
+        </div>
+      </div>
+
+      <div
+        style={{
+          minWidth: "72px",
+          textAlign: "right",
+          fontWeight: "bold",
+          fontSize: "15px",
+          color: "#111",
+        }}
+      >
+        × {item.concreteCount}
+      </div>
+    </button>
+  );
+}
 
 export default function GenericSetPage({
   title,
@@ -39,8 +122,12 @@ export default function GenericSetPage({
   const [showComplement, setShowComplement] = useState(false);
   const [excludeOpenStrings, setExcludeOpenStrings] = useState(false);
   const [analysisMode, setAnalysisMode] = useState("voicings");
+
+  const [subsetTargetCardinality, setSubsetTargetCardinality] = useState(
+    noteCount > 3 ? noteCount - 1 : 3
+  );
   const [supersetTargetCardinality, setSupersetTargetCardinality] = useState(
-    Math.min(noteCount + 1, 8)
+    noteCount < 12 ? noteCount + 1 : 12
   );
 
   const [connectionFilter, setConnectionFilter] = useState("all");
@@ -49,6 +136,15 @@ export default function GenericSetPage({
   const [bassFilter, setBassFilter] = useState("all");
   const [transformMode, setTransformMode] = useState("base");
   const [transformAmount, setTransformAmount] = useState(0);
+
+  const [selectedAnalysisClassKey, setSelectedAnalysisClassKey] =
+    useState(null);
+  const [selectedAnalysisMemberIndex, setSelectedAnalysisMemberIndex] =
+    useState(0);
+  const [selectedAnalysisVoicingIndex, setSelectedAnalysisVoicingIndex] =
+    useState(0);
+  const [analysisShowAllVoicings, setAnalysisShowAllVoicings] = useState(true);
+  const [analysisBassFilter, setAnalysisBassFilter] = useState("all");
 
   const sortedKeys = useMemo(() => {
     return [...keys].sort((a, b) => {
@@ -82,9 +178,17 @@ export default function GenericSetPage({
     });
   }, [keys]);
 
+  const subsetCardinalityOptions = useMemo(() => {
+    const options = [];
+    for (let n = 3; n <= noteCount - 1; n++) {
+      options.push(n);
+    }
+    return options;
+  }, [noteCount]);
+
   const supersetCardinalityOptions = useMemo(() => {
     const options = [];
-    for (let n = noteCount + 1; n <= 8; n++) {
+    for (let n = noteCount + 1; n <= 12; n++) {
       options.push(n);
     }
     return options;
@@ -150,6 +254,7 @@ export default function GenericSetPage({
 
     if (connectionFilter === "adjacent") list = list.filter((v) => !v.hasSkip);
     if (connectionFilter === "skips") list = list.filter((v) => v.hasSkip);
+
     if (groupFilter !== "all") {
       list = list.filter((v) => v.stringPattern === groupFilter);
     }
@@ -174,17 +279,111 @@ export default function GenericSetPage({
 
   const subsetClasses = useMemo(() => {
     if (!activeSet || showComplement) return [];
+    if (activeSet.pcs.length <= 3) return [];
+    if (!subsetCardinalityOptions.includes(subsetTargetCardinality)) return [];
 
     return getSubsetClasses(activeSet.pcs, {
-      minCardinality: 3,
-      maxCardinality: activeSet.pcs.length - 1,
+      minCardinality: subsetTargetCardinality,
+      maxCardinality: subsetTargetCardinality,
     });
-  }, [activeSet, showComplement]);
+  }, [
+    activeSet,
+    showComplement,
+    subsetTargetCardinality,
+    subsetCardinalityOptions,
+  ]);
 
   const supersetClasses = useMemo(() => {
     if (!activeSet || showComplement) return [];
+    if (activeSet.pcs.length >= 12) return [];
+    if (!supersetCardinalityOptions.includes(supersetTargetCardinality)) {
+      return [];
+    }
+
     return getSupersetClasses(activeSet.pcs, supersetTargetCardinality);
-  }, [activeSet, showComplement, supersetTargetCardinality]);
+  }, [
+    activeSet,
+    showComplement,
+    supersetTargetCardinality,
+    supersetCardinalityOptions,
+  ]);
+
+  const analysisClasses = useMemo(() => {
+    if (analysisMode === "subsets") return subsetClasses;
+    if (analysisMode === "supersets") return supersetClasses;
+    return [];
+  }, [analysisMode, subsetClasses, supersetClasses]);
+
+  const selectedAnalysisClass = useMemo(() => {
+    if (!analysisClasses.length) return null;
+    return (
+      analysisClasses.find(
+        (item) => getClassKey(item) === selectedAnalysisClassKey
+      ) || analysisClasses[0]
+    );
+  }, [analysisClasses, selectedAnalysisClassKey]);
+
+  const analysisMembers = selectedAnalysisClass?.members || [];
+
+  const selectedAnalysisMember =
+    analysisMembers[selectedAnalysisMemberIndex] || null;
+
+  const selectedAnalysisMemberPrimeForm = useMemo(() => {
+    if (!selectedAnalysisMember) return [];
+    return primeForm(selectedAnalysisMember);
+  }, [selectedAnalysisMember]);
+
+  const analysisDegreeMap = useMemo(() => {
+    if (!selectedAnalysisMember) return null;
+    return makeDegreeMapFromPrimeForm(selectedAnalysisMemberPrimeForm, "base", 0);
+  }, [selectedAnalysisMember, selectedAnalysisMemberPrimeForm]);
+
+  const analysisVoicingFinder = useMemo(() => {
+    if (!selectedAnalysisMember) return null;
+    return getVoicingFinderByCardinality(selectedAnalysisMember.length);
+  }, [selectedAnalysisMember]);
+
+  const analysisRawVoicings = useMemo(() => {
+    if (!selectedAnalysisMember || !analysisVoicingFinder) return [];
+
+    return analysisVoicingFinder(selectedAnalysisMember, maxSpan).map((v) => ({
+      ...v,
+      primeForm: selectedAnalysisMemberPrimeForm,
+      forteName: selectedAnalysisClass?.forteName || null,
+    }));
+  }, [
+    selectedAnalysisMember,
+    analysisVoicingFinder,
+    maxSpan,
+    selectedAnalysisMemberPrimeForm,
+    selectedAnalysisClass,
+  ]);
+
+  const analysisFilteredVoicings = useMemo(() => {
+    let list = [...analysisRawVoicings];
+
+    if (excludeOpenStrings) {
+      list = list.filter((v) => v.positions.every((p) => p.fret > 0));
+    }
+
+    list = filterByBassDegree(list, analysisBassFilter, analysisDegreeMap);
+
+    list.sort((a, b) => {
+      if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
+      if (a.span !== b.span) return a.span - b.span;
+      return a.stringPattern.localeCompare(b.stringPattern);
+    });
+
+    return list;
+  }, [
+    analysisRawVoicings,
+    excludeOpenStrings,
+    analysisBassFilter,
+    analysisDegreeMap,
+  ]);
+
+  const selectedAnalysisVoicing =
+    analysisFilteredVoicings[selectedAnalysisVoicingIndex] || null;
 
   const selectedVoicing = filteredVoicings[selected] || null;
 
@@ -221,9 +420,51 @@ export default function GenericSetPage({
   ]);
 
   useEffect(() => {
-    const nextValue = Math.min(noteCount + 1, 8);
-    setSupersetTargetCardinality(nextValue);
+    setSubsetTargetCardinality(noteCount > 3 ? noteCount - 1 : 3);
+    setSupersetTargetCardinality(noteCount < 12 ? noteCount + 1 : 12);
   }, [selectedForte, noteCount]);
+
+  useEffect(() => {
+    if (analysisMode === "voicings" || !analysisClasses.length) {
+      setSelectedAnalysisClassKey(null);
+      return;
+    }
+
+    const exists = analysisClasses.some(
+      (item) => getClassKey(item) === selectedAnalysisClassKey
+    );
+
+    if (!exists) {
+      setSelectedAnalysisClassKey(getClassKey(analysisClasses[0]));
+    }
+  }, [analysisMode, analysisClasses, selectedAnalysisClassKey]);
+
+  useEffect(() => {
+    setSelectedAnalysisMemberIndex(0);
+    setSelectedAnalysisVoicingIndex(0);
+    setAnalysisShowAllVoicings(true);
+    setAnalysisBassFilter("all");
+  }, [selectedAnalysisClassKey]);
+
+  useEffect(() => {
+    setSelectedAnalysisVoicingIndex(0);
+    setAnalysisShowAllVoicings(true);
+    setAnalysisBassFilter("all");
+  }, [selectedAnalysisMemberIndex]);
+
+  useEffect(() => {
+    setSelectedAnalysisVoicingIndex(0);
+  }, [maxSpan, excludeOpenStrings, analysisBassFilter]);
+
+  const isAnalysisMode =
+    !showComplement &&
+    (analysisMode === "subsets" || analysisMode === "supersets");
+
+  const canRenderAnalysisVoicings =
+    !!selectedAnalysisMember &&
+    selectedAnalysisMember.length >= 3 &&
+    selectedAnalysisMember.length <= 6 &&
+    !!analysisVoicingFinder;
 
   return (
     <div
@@ -363,163 +604,279 @@ export default function GenericSetPage({
                 </div>
               </div>
 
-              {analysisMode === "supersets" && (
-                <div style={{ marginTop: "16px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Cardinalità target superset
-                  </label>
-                  <select
-                    value={supersetTargetCardinality}
-                    onChange={(e) =>
-                      setSupersetTargetCardinality(Number(e.target.value))
-                    }
-                    style={{
-                      width: "100%",
-                      maxWidth: "280px",
-                      padding: "12px",
-                      borderRadius: "12px",
-                      border: "1px solid #ccc",
-                      fontSize: "16px",
-                      background: "white",
-                    }}
-                  >
-                    {supersetCardinalityOptions.map((n) => (
-                      <option key={n} value={n}>
-                        Cardinalità {n}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div
-                style={{
-                  display: "grid",
-                  gap: "14px",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  marginTop: "16px",
-                }}
-              >
-                <div>
-                  <SectionTitle>Filtro connessione corde</SectionTitle>
-                  <div
-                    style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                  >
-                    <PillButton
-                      active={connectionFilter === "all"}
-                      onClick={() => setConnectionFilter("all")}
+              {analysisMode === "subsets" &&
+                subsetCardinalityOptions.length > 0 && (
+                  <div style={{ marginTop: "16px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "8px",
+                        fontWeight: "bold",
+                      }}
                     >
-                      Tutte
-                    </PillButton>
-                    <PillButton
-                      active={connectionFilter === "adjacent"}
-                      onClick={() => setConnectionFilter("adjacent")}
+                      Tipo di subset
+                    </label>
+                    <select
+                      value={subsetTargetCardinality}
+                      onChange={(e) =>
+                        setSubsetTargetCardinality(Number(e.target.value))
+                      }
+                      style={{
+                        width: "100%",
+                        maxWidth: "280px",
+                        padding: "12px",
+                        borderRadius: "12px",
+                        border: "1px solid #ccc",
+                        fontSize: "16px",
+                        background: "white",
+                      }}
                     >
-                      Solo adiacenti
-                    </PillButton>
-                    <PillButton
-                      active={connectionFilter === "skips"}
-                      onClick={() => setConnectionFilter("skips")}
-                    >
-                      Solo salti
-                    </PillButton>
+                      {subsetCardinalityOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {getCardinalityLabel(n)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
+                )}
 
-                <div>
-                  <SectionTitle>Gruppo corde</SectionTitle>
-                  <div
-                    style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                  >
-                    <PillButton
-                      active={groupFilter === "all"}
-                      onClick={() => setGroupFilter("all")}
+              {analysisMode === "supersets" &&
+                supersetCardinalityOptions.length > 0 && (
+                  <div style={{ marginTop: "16px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "8px",
+                        fontWeight: "bold",
+                      }}
                     >
-                      Tutti
-                    </PillButton>
-                    {availableGroupPatterns.map((pattern) => (
-                      <PillButton
-                        key={pattern}
-                        active={groupFilter === pattern}
-                        onClick={() => setGroupFilter(pattern)}
+                      Tipo di superset
+                    </label>
+                    <select
+                      value={supersetTargetCardinality}
+                      onChange={(e) =>
+                        setSupersetTargetCardinality(Number(e.target.value))
+                      }
+                      style={{
+                        width: "100%",
+                        maxWidth: "280px",
+                        padding: "12px",
+                        borderRadius: "12px",
+                        border: "1px solid #ccc",
+                        fontSize: "16px",
+                        background: "white",
+                      }}
+                    >
+                      {supersetCardinalityOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {getCardinalityLabel(n)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+              {analysisMode === "voicings" ? (
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "14px",
+                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                      marginTop: "16px",
+                    }}
+                  >
+                    <div>
+                      <SectionTitle>Filtro connessione corde</SectionTitle>
+                      <div
+                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
                       >
-                        {pattern}
-                      </PillButton>
-                    ))}
-                  </div>
-                </div>
+                        <PillButton
+                          active={connectionFilter === "all"}
+                          onClick={() => setConnectionFilter("all")}
+                        >
+                          Tutte
+                        </PillButton>
+                        <PillButton
+                          active={connectionFilter === "adjacent"}
+                          onClick={() => setConnectionFilter("adjacent")}
+                        >
+                          Solo adiacenti
+                        </PillButton>
+                        <PillButton
+                          active={connectionFilter === "skips"}
+                          onClick={() => setConnectionFilter("skips")}
+                        >
+                          Solo salti
+                        </PillButton>
+                      </div>
+                    </div>
 
-                <div>
-                  <SectionTitle>Vista</SectionTitle>
+                    <div>
+                      <SectionTitle>Gruppo corde</SectionTitle>
+                      <div
+                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
+                      >
+                        <PillButton
+                          active={groupFilter === "all"}
+                          onClick={() => setGroupFilter("all")}
+                        >
+                          Tutti
+                        </PillButton>
+                        {availableGroupPatterns.map((pattern) => (
+                          <PillButton
+                            key={pattern}
+                            active={groupFilter === pattern}
+                            onClick={() => setGroupFilter(pattern)}
+                          >
+                            {pattern}
+                          </PillButton>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <SectionTitle>Vista</SectionTitle>
+                      <div
+                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
+                      >
+                        <PillButton
+                          active={displayMode === "notes"}
+                          onClick={() => setDisplayMode("notes")}
+                        >
+                          Note
+                        </PillButton>
+                        <PillButton
+                          active={displayMode === "degrees"}
+                          onClick={() => setDisplayMode("degrees")}
+                        >
+                          {degreeButtonLabel}
+                        </PillButton>
+                      </div>
+                    </div>
+
+                    <BassButtons
+                      noteCount={noteCount}
+                      value={bassFilter}
+                      onChange={setBassFilter}
+                    />
+
+                    <TransformButtons
+                      mode={transformMode}
+                      setMode={(m) => {
+                        setTransformMode(m);
+                        setSelected(0);
+                        setShowAll(true);
+                      }}
+                      amount={transformAmount}
+                      setAmount={(n) => {
+                        setTransformAmount(n);
+                        setSelected(0);
+                        setShowAll(true);
+                      }}
+                    />
+                  </div>
+
                   <div
-                    style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
+                    style={{ marginTop: "16px", display: "grid", gap: "10px" }}
                   >
-                    <PillButton
-                      active={displayMode === "notes"}
-                      onClick={() => setDisplayMode("notes")}
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
                     >
-                      Note
-                    </PillButton>
-                    <PillButton
-                      active={displayMode === "degrees"}
-                      onClick={() => setDisplayMode("degrees")}
+                      <input
+                        type="checkbox"
+                        checked={showAll}
+                        onChange={(e) => setShowAll(e.target.checked)}
+                      />
+                      Mostra tutte le forme insieme sul manico
+                    </label>
+
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
                     >
-                      {degreeButtonLabel}
-                    </PillButton>
+                      <input
+                        type="checkbox"
+                        checked={excludeOpenStrings}
+                        onChange={(e) => setExcludeOpenStrings(e.target.checked)}
+                      />
+                      Escludi corde vuote
+                    </label>
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "14px",
+                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                      marginTop: "16px",
+                    }}
+                  >
+                    <div>
+                      <SectionTitle>Vista</SectionTitle>
+                      <div
+                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
+                      >
+                        <PillButton
+                          active={displayMode === "notes"}
+                          onClick={() => setDisplayMode("notes")}
+                        >
+                          Note
+                        </PillButton>
+                        <PillButton
+                          active={displayMode === "degrees"}
+                          onClick={() => setDisplayMode("degrees")}
+                        >
+                          {degreeButtonLabel}
+                        </PillButton>
+                      </div>
+                    </div>
 
-                <BassButtons
-                  noteCount={noteCount}
-                  value={bassFilter}
-                  onChange={setBassFilter}
-                />
+                    <TransformButtons
+                      mode={transformMode}
+                      setMode={(m) => {
+                        setTransformMode(m);
+                        setSelected(0);
+                        setShowAll(true);
+                      }}
+                      amount={transformAmount}
+                      setAmount={(n) => {
+                        setTransformAmount(n);
+                        setSelected(0);
+                        setShowAll(true);
+                      }}
+                    />
+                  </div>
 
-                <TransformButtons
-                  mode={transformMode}
-                  setMode={(m) => {
-                    setTransformMode(m);
-                    setSelected(0);
-                    setShowAll(true);
-                  }}
-                  amount={transformAmount}
-                  setAmount={(n) => {
-                    setTransformAmount(n);
-                    setSelected(0);
-                    setShowAll(true);
-                  }}
-                />
-              </div>
-
-              <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={showAll}
-                    onChange={(e) => setShowAll(e.target.checked)}
-                  />
-                  Mostra tutte le forme insieme sul manico
-                </label>
-
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={excludeOpenStrings}
-                    onChange={(e) => setExcludeOpenStrings(e.target.checked)}
-                  />
-                  Escludi corde vuote
-                </label>
-              </div>
+                  <div
+                    style={{ marginTop: "16px", display: "grid", gap: "10px" }}
+                  >
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={excludeOpenStrings}
+                        onChange={(e) => setExcludeOpenStrings(e.target.checked)}
+                      />
+                      Escludi corde vuote
+                    </label>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -542,60 +899,122 @@ export default function GenericSetPage({
             <h2>Manico</h2>
 
             {!showComplement ? (
-              <>
-                <p style={{ color: "#666" }}>
-                  Le caselle grigie appartengono al {noteName} trasformato. Le
-                  caselle nere mostrano la forma selezionata, oppure tutte le
-                  forme se l’opzione è attiva.
-                </p>
+              analysisMode === "voicings" ? (
+                <>
+                  <p style={{ color: "#666" }}>
+                    Le caselle grigie appartengono al {noteName} trasformato. Le
+                    caselle nere mostrano la forma selezionata, oppure tutte le
+                    forme se l’opzione è attiva.
+                  </p>
 
-                {activeSet && (
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#555",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    Trasformazione attiva: {activeSet.transformLabel}
-                  </div>
-                )}
+                  {activeSet && (
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#555",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Trasformazione attiva: {activeSet.transformLabel}
+                    </div>
+                  )}
 
-                {activeSet && (
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#555",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    Prime form del {noteName}: [{activeSet.primeForm.join(",")}]
-                    {" | "}trasformata ordinata: [
-                    {activeSet.transformedPrimeForm.join(",")}]
-                  </div>
-                )}
+                  {activeSet && (
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#555",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Prime form del {noteName}: [{activeSet.primeForm.join(",")}]
+                      {" | "}trasformata ordinata: [
+                      {activeSet.transformedPrimeForm.join(",")}]
+                    </div>
+                  )}
 
-                {activeSet && (
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#555",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    Nome Forte del {noteName}: {activeSet.forteName}
-                  </div>
-                )}
+                  {activeSet && (
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#555",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Nome Forte del {noteName}: {activeSet.forteName}
+                    </div>
+                  )}
 
-                <Fretboard
-                  voicing={selectedVoicing}
-                  allTargetPcs={activeSet ? activeSet.pcs : []}
-                  allVoicings={filteredVoicings}
-                  showAll={showAll}
-                  displayMode={displayMode}
-                  degreeMap={activeSet?.degreeMap}
-                />
-              </>
+                  <Fretboard
+                    voicing={selectedVoicing}
+                    allTargetPcs={activeSet ? activeSet.pcs : []}
+                    allVoicings={filteredVoicings}
+                    showAll={showAll}
+                    displayMode={displayMode}
+                    degreeMap={activeSet?.degreeMap}
+                  />
+                </>
+              ) : (
+                <>
+                  <p style={{ color: "#666" }}>
+                    Seleziona una classe a destra. Il manico mostrerà la singola
+                    occorrenza concreta selezionata e, quando possibile, i suoi
+                    voicing/rivolti.
+                  </p>
+
+                  {selectedAnalysisClass && (
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#555",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Classe selezionata: {selectedAnalysisClass.forteName || "n.d."}
+                      {" | "}PF [{selectedAnalysisClass.primeForm.join(",")}]
+                    </div>
+                  )}
+
+                  {selectedAnalysisMember && (
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#555",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Occorrenza concreta: [{selectedAnalysisMember.join(",")}]
+                    </div>
+                  )}
+
+                  {selectedAnalysisMember && !canRenderAnalysisVoicings && (
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#555",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Cardinalità {selectedAnalysisMember.length}: sul manico
+                      vengono mostrate le pitch classes dell’occorrenza, non un
+                      voicing simultaneo.
+                    </div>
+                  )}
+
+                  <Fretboard
+                    voicing={canRenderAnalysisVoicings ? selectedAnalysisVoicing : null}
+                    allTargetPcs={selectedAnalysisMember || []}
+                    allVoicings={
+                      canRenderAnalysisVoicings ? analysisFilteredVoicings : []
+                    }
+                    showAll={
+                      canRenderAnalysisVoicings ? analysisShowAllVoicings : false
+                    }
+                    displayMode={displayMode}
+                    degreeMap={analysisDegreeMap}
+                  />
+                </>
+              )
             ) : (
               <>
                 <p style={{ color: "#666" }}>
@@ -659,129 +1078,206 @@ export default function GenericSetPage({
                     ))}
                   </div>
                 </>
-              ) : analysisMode === "subsets" ? (
-                <>
-                  <h2>Subset-class</h2>
-                  <p style={{ color: "#666" }}>
-                    {subsetClasses.length} classi di sottoinsiemi trovate per il{" "}
-                    {noteName} selezionato.
-                  </p>
-
-                  <div
-                    style={{
-                      maxHeight: "760px",
-                      overflowY: "auto",
-                      marginTop: "16px",
-                    }}
-                  >
-                    {subsetClasses.map((item, i) => (
-                      <div
-                        key={`${selectedForte}-subset-${i}-${item.primeForm.join(
-                          "-"
-                        )}`}
-                        style={{
-                          padding: "12px",
-                          borderRadius: "12px",
-                          border: "1px solid #ddd",
-                          background: "white",
-                          marginBottom: "10px",
-                        }}
-                      >
-                        <div style={{ fontWeight: "bold" }}>
-                          {item.forteName || "n.d."}
-                        </div>
-                        <div
-                          style={{
-                            marginTop: "4px",
-                            fontSize: "12px",
-                            color: "#666",
-                          }}
-                        >
-                          Prime form: [{item.primeForm.join(",")}]
-                        </div>
-                        <div
-                          style={{
-                            marginTop: "4px",
-                            fontSize: "12px",
-                            color: "#666",
-                          }}
-                        >
-                          Cardinalità: {item.cardinality}
-                        </div>
-                        <div
-                          style={{
-                            marginTop: "4px",
-                            fontSize: "12px",
-                            color: "#666",
-                          }}
-                        >
-                          Occorrenze concrete: {item.concreteCount}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
               ) : (
                 <>
-                  <h2>Superset-class</h2>
+                  <h2>
+                    {analysisMode === "subsets" ? "Subset-class" : "Superset-class"}
+                  </h2>
+
                   <p style={{ color: "#666" }}>
-                    {supersetClasses.length} classi di soprainsiemi trovate a
-                    cardinalità {supersetTargetCardinality}.
+                    {analysisClasses.length} classi trovate in{" "}
+                    {getCardinalityLabel(
+                      analysisMode === "subsets"
+                        ? subsetTargetCardinality
+                        : supersetTargetCardinality
+                    ).toLowerCase()}
+                    .
                   </p>
 
                   <div
                     style={{
-                      maxHeight: "760px",
+                      maxHeight: "320px",
                       overflowY: "auto",
                       marginTop: "16px",
                     }}
                   >
-                    {supersetClasses.map((item, i) => (
-                      <div
-                        key={`${selectedForte}-superset-${i}-${item.primeForm.join(
-                          "-"
-                        )}`}
-                        style={{
-                          padding: "12px",
-                          borderRadius: "12px",
-                          border: "1px solid #ddd",
-                          background: "white",
-                          marginBottom: "10px",
-                        }}
-                      >
-                        <div style={{ fontWeight: "bold" }}>
-                          {item.forteName || "n.d."}
-                        </div>
-                        <div
-                          style={{
-                            marginTop: "4px",
-                            fontSize: "12px",
-                            color: "#666",
-                          }}
-                        >
-                          Prime form: [{item.primeForm.join(",")}]
-                        </div>
-                        <div
-                          style={{
-                            marginTop: "4px",
-                            fontSize: "12px",
-                            color: "#666",
-                          }}
-                        >
-                          Cardinalità: {item.cardinality}
-                        </div>
-                        <div
-                          style={{
-                            marginTop: "4px",
-                            fontSize: "12px",
-                            color: "#666",
-                          }}
-                        >
-                          Occorrenze concrete: {item.concreteCount}
-                        </div>
-                      </div>
+                    {analysisClasses.map((item) => (
+                      <ClassResultRow
+                        key={`${analysisMode}-${getClassKey(item)}`}
+                        item={item}
+                        active={
+                          getClassKey(item) ===
+                          getClassKey(selectedAnalysisClass || item)
+                        }
+                        onClick={() => setSelectedAnalysisClassKey(getClassKey(item))}
+                      />
                     ))}
                   </div>
+
+                  {selectedAnalysisClass && (
+                    <div
+                      style={{
+                        marginTop: "18px",
+                        padding: "14px",
+                        borderRadius: "14px",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <div style={{ fontWeight: "bold", marginBottom: "10px" }}>
+                        Dettaglio classe
+                      </div>
+
+                      <div style={{ fontSize: "13px", color: "#555" }}>
+                        <strong>Classe:</strong>{" "}
+                        {selectedAnalysisClass.forteName || "n.d."}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#555",
+                          marginTop: "4px",
+                        }}
+                      >
+                        <strong>Prime form:</strong>{" "}
+                        [{selectedAnalysisClass.primeForm.join(",")}]
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#555",
+                          marginTop: "4px",
+                        }}
+                      >
+                        <strong>Occorrenze concrete:</strong>{" "}
+                        {selectedAnalysisClass.concreteCount}
+                      </div>
+
+                      {analysisMembers.length > 0 && (
+                        <div style={{ marginTop: "14px" }}>
+                          <label
+                            style={{
+                              display: "block",
+                              marginBottom: "8px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            Occorrenza concreta
+                          </label>
+                          <select
+                            value={selectedAnalysisMemberIndex}
+                            onChange={(e) =>
+                              setSelectedAnalysisMemberIndex(Number(e.target.value))
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "12px",
+                              borderRadius: "12px",
+                              border: "1px solid #ccc",
+                              fontSize: "15px",
+                              background: "white",
+                            }}
+                          >
+                            {analysisMembers.map((member, i) => (
+                              <option key={`${getClassKey(selectedAnalysisClass)}-${i}`} value={i}>
+                                Occorrenza {i + 1} — [{member.join(",")}]
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {canRenderAnalysisVoicings ? (
+                        <>
+                          <div style={{ marginTop: "16px" }}>
+                            <BassButtons
+                              noteCount={selectedAnalysisMember.length}
+                              value={analysisBassFilter}
+                              onChange={setAnalysisBassFilter}
+                            />
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: "14px",
+                              display: "grid",
+                              gap: "10px",
+                            }}
+                          >
+                            <label
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={analysisShowAllVoicings}
+                                onChange={(e) =>
+                                  setAnalysisShowAllVoicings(e.target.checked)
+                                }
+                              />
+                              Mostra tutte le forme di questa occorrenza sul manico
+                            </label>
+                          </div>
+
+                          <div style={{ marginTop: "14px" }}>
+                            <div
+                              style={{
+                                fontWeight: "bold",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              Voicing / rivolti dell’occorrenza
+                            </div>
+
+                            <div
+                              style={{
+                                maxHeight: "260px",
+                                overflowY: "auto",
+                              }}
+                            >
+                              {analysisFilteredVoicings.map((v, i) => (
+                                <VoicingCard
+                                  key={`${analysisMode}-${getClassKey(
+                                    selectedAnalysisClass
+                                  )}-${selectedAnalysisMemberIndex}-${i}-${v.positions
+                                    .map((p) => `${p.stringIndex}-${p.fret}`)
+                                    .join("-")}`}
+                                  voicing={v}
+                                  index={i}
+                                  selected={i === selectedAnalysisVoicingIndex}
+                                  onSelect={() => {
+                                    setSelectedAnalysisVoicingIndex(i);
+                                    if (analysisShowAllVoicings) {
+                                      setAnalysisShowAllVoicings(false);
+                                    }
+                                  }}
+                                  displayMode={displayMode}
+                                  showPrimeForm={true}
+                                  showForte={true}
+                                  degreeMap={analysisDegreeMap}
+                                />
+                              ))}
+
+                              {analysisFilteredVoicings.length === 0 && (
+                                <p style={{ color: "#666", marginTop: "8px" }}>
+                                  Nessun voicing disponibile con i filtri correnti.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <p style={{ color: "#666", marginTop: "14px" }}>
+                          Per questa occorrenza non vengono mostrati rivolti/voicing
+                          simultanei. Sul manico vedi comunque l’insieme delle pitch
+                          classes dell’occorrenza selezionata.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </>
               )
             ) : (

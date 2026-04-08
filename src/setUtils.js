@@ -10,6 +10,29 @@ import {
   ALL_6_STRING_GROUPS,
   FORTE_REFERENCE,
 } from "./setData";
+
+const TRICHORD_REFERENCE = {
+  "3-1": { pf: "012", iv: "210000" },
+  "3-2": { pf: "013", iv: "111000" },
+  "3-3": { pf: "014", iv: "101100" },
+  "3-4": { pf: "015", iv: "100110" },
+  "3-5": { pf: "016", iv: "100011" },
+  "3-6": { pf: "024", iv: "020100" },
+  "3-7": { pf: "025", iv: "011010" },
+  "3-8": { pf: "026", iv: "010101" },
+  "3-9": { pf: "027", iv: "010020" },
+  "3-10": { pf: "036", iv: "002001" },
+  "3-11": { pf: "037", iv: "001110" },
+  "3-12": { pf: "048", iv: "000300" },
+};
+
+function getCombinedForteReference() {
+  return {
+    ...TRICHORD_REFERENCE,
+    ...FORTE_REFERENCE,
+  };
+}
+
 export function normalizeNote(input) {
   return input.trim().replace(/♯/g, "#").replace(/♭/g, "b");
 }
@@ -181,9 +204,12 @@ export function makeDegreeMapFromPrimeForm(primeFormArray, mode, amount) {
 
 export function findForteNumberByPf(arr) {
   const key = pfArrayToString(arr);
-  const match = Object.entries(FORTE_REFERENCE).find(
+  const reference = getCombinedForteReference();
+
+  const match = Object.entries(reference).find(
     ([, value]) => value.pf === key
   );
+
   return match ? match[0] : null;
 }
 
@@ -192,11 +218,12 @@ export function complementFromPcs(pcs) {
   const comp = universe.filter((pc) => !pcs.includes(pc));
   const compPf = primeForm(comp);
   const compForte = findForteNumberByPf(compPf);
+
   return {
     pcs: normalizePcs(comp),
     pf: pfArrayToString(compPf),
     forte: compForte || "n.d.",
-    iv: compForte ? FORTE_REFERENCE[compForte].iv : "",
+    iv: compForte ? getCombinedForteReference()[compForte]?.iv || "" : "",
   };
 }
 
@@ -314,6 +341,7 @@ export function findPentachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
 export function findHexachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
   return findNNoteVoicings(targetPcs, maxSpan, ALL_6_STRING_GROUPS, 6);
 }
+
 function combinationsOfSize(items, size, start = 0, prefix = [], result = []) {
   if (prefix.length === size) {
     result.push([...prefix]);
