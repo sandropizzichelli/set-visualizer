@@ -65,6 +65,47 @@ function getVoicingFinderByCardinality(cardinality) {
   return null;
 }
 
+function ClassBadge({ children }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "4px 10px",
+        borderRadius: "999px",
+        background: "#e2e8f0",
+        fontSize: "12px",
+        fontWeight: "bold",
+        color: "#111",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function DetailChip({ label, value }) {
+  return (
+    <div
+      style={{
+        padding: "10px 12px",
+        borderRadius: "12px",
+        background: "white",
+        border: "1px solid #dbe3ee",
+      }}
+    >
+      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "4px" }}>
+        {label}
+      </div>
+      <div style={{ fontSize: "13px", fontWeight: "bold", color: "#111" }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function ClassResultRow({ item, active, onClick }) {
   return (
     <button
@@ -95,21 +136,11 @@ function ClassResultRow({ item, active, onClick }) {
             color: "#666",
           }}
         >
-          PF [{item.primeForm.join(",")}]
+          PF [{item.primeForm.join(",")}] · {getCardinalityLabel(item.cardinality)}
         </div>
       </div>
 
-      <div
-        style={{
-          minWidth: "72px",
-          textAlign: "right",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#111",
-        }}
-      >
-        × {item.concreteCount}
-      </div>
+      <ClassBadge>× {item.concreteCount}</ClassBadge>
     </button>
   );
 }
@@ -697,9 +728,7 @@ export default function GenericSetPage({
                   >
                     <div>
                       <SectionTitle>Gruppo corde</SectionTitle>
-                      <div
-                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                      >
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         <PillButton
                           active={groupFilter === "all"}
                           onClick={() => setGroupFilter("all")}
@@ -720,9 +749,7 @@ export default function GenericSetPage({
 
                     <div>
                       <SectionTitle>Vista</SectionTitle>
-                      <div
-                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                      >
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         <PillButton
                           active={displayMode === "notes"}
                           onClick={() => setDisplayMode("notes")}
@@ -760,15 +787,9 @@ export default function GenericSetPage({
                     />
                   </div>
 
-                  <div
-                    style={{ marginTop: "16px", display: "grid", gap: "10px" }}
-                  >
+                  <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
                     <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
                     >
                       <input
                         type="checkbox"
@@ -779,11 +800,7 @@ export default function GenericSetPage({
                     </label>
 
                     <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
                     >
                       <input
                         type="checkbox"
@@ -806,9 +823,7 @@ export default function GenericSetPage({
                   >
                     <div>
                       <SectionTitle>Vista</SectionTitle>
-                      <div
-                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                      >
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         <PillButton
                           active={displayMode === "notes"}
                           onClick={() => setDisplayMode("notes")}
@@ -840,15 +855,9 @@ export default function GenericSetPage({
                     />
                   </div>
 
-                  <div
-                    style={{ marginTop: "16px", display: "grid", gap: "10px" }}
-                  >
+                  <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
                     <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
                     >
                       <input
                         type="checkbox"
@@ -1081,7 +1090,7 @@ export default function GenericSetPage({
 
                   <div
                     style={{
-                      maxHeight: "320px",
+                      maxHeight: "280px",
                       overflowY: "auto",
                       marginTop: "16px",
                     }}
@@ -1109,69 +1118,130 @@ export default function GenericSetPage({
                         border: "1px solid #e2e8f0",
                       }}
                     >
-                      <div style={{ fontWeight: "bold", marginBottom: "10px" }}>
+                      <div style={{ fontWeight: "bold", marginBottom: "12px" }}>
                         Dettaglio classe
                       </div>
 
-                      <div style={{ fontSize: "13px", color: "#555" }}>
-                        <strong>Classe:</strong>{" "}
-                        {selectedAnalysisClass.forteName || "n.d."}
-                      </div>
                       <div
                         style={{
-                          fontSize: "13px",
-                          color: "#555",
-                          marginTop: "4px",
+                          display: "grid",
+                          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                          gap: "10px",
                         }}
                       >
-                        <strong>Prime form:</strong>{" "}
-                        [{selectedAnalysisClass.primeForm.join(",")}]
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          color: "#555",
-                          marginTop: "4px",
-                        }}
-                      >
-                        <strong>Occorrenze concrete:</strong>{" "}
-                        {selectedAnalysisClass.concreteCount}
+                        <DetailChip
+                          label="Classe"
+                          value={selectedAnalysisClass.forteName || "n.d."}
+                        />
+                        <DetailChip
+                          label="Prime form"
+                          value={`[${selectedAnalysisClass.primeForm.join(",")}]`}
+                        />
+                        <DetailChip
+                          label="Occorrenze"
+                          value={String(selectedAnalysisClass.concreteCount)}
+                        />
                       </div>
 
                       {analysisMembers.length > 0 && (
                         <div style={{ marginTop: "14px" }}>
-                          <label
+                          <div
                             style={{
-                              display: "block",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "10px",
                               marginBottom: "8px",
-                              fontWeight: "bold",
                             }}
                           >
-                            Occorrenza concreta
-                          </label>
-                          <select
-                            value={selectedAnalysisMemberIndex}
-                            onChange={(e) =>
-                              setSelectedAnalysisMemberIndex(Number(e.target.value))
-                            }
+                            <label style={{ fontWeight: "bold" }}>
+                              Occorrenza concreta
+                            </label>
+                            <ClassBadge>
+                              {selectedAnalysisMemberIndex + 1} / {analysisMembers.length}
+                            </ClassBadge>
+                          </div>
+
+                          <div
                             style={{
-                              width: "100%",
-                              padding: "12px",
-                              borderRadius: "12px",
-                              border: "1px solid #ccc",
-                              fontSize: "15px",
-                              background: "white",
+                              display: "grid",
+                              gridTemplateColumns: "auto 1fr auto",
+                              gap: "8px",
+                              alignItems: "center",
                             }}
                           >
-                            {analysisMembers.map((member, i) => (
-                              <option
-                                key={`${getClassKey(selectedAnalysisClass)}-${i}`}
-                                value={i}
-                              >
-                                Occorrenza {i + 1} — [{member.join(",")}]
-                              </option>
-                            ))}
-                          </select>
+                            <button
+                              onClick={() =>
+                                setSelectedAnalysisMemberIndex((prev) =>
+                                  Math.max(0, prev - 1)
+                                )
+                              }
+                              disabled={selectedAnalysisMemberIndex === 0}
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: "10px",
+                                border: "1px solid #ccc",
+                                background:
+                                  selectedAnalysisMemberIndex === 0 ? "#f8fafc" : "white",
+                                cursor:
+                                  selectedAnalysisMemberIndex === 0
+                                    ? "not-allowed"
+                                    : "pointer",
+                              }}
+                            >
+                              ←
+                            </button>
+
+                            <select
+                              value={selectedAnalysisMemberIndex}
+                              onChange={(e) =>
+                                setSelectedAnalysisMemberIndex(Number(e.target.value))
+                              }
+                              style={{
+                                width: "100%",
+                                padding: "12px",
+                                borderRadius: "12px",
+                                border: "1px solid #ccc",
+                                fontSize: "15px",
+                                background: "white",
+                              }}
+                            >
+                              {analysisMembers.map((member, i) => (
+                                <option
+                                  key={`${getClassKey(selectedAnalysisClass)}-${i}`}
+                                  value={i}
+                                >
+                                  Occorrenza {i + 1} — [{member.join(",")}]
+                                </option>
+                              ))}
+                            </select>
+
+                            <button
+                              onClick={() =>
+                                setSelectedAnalysisMemberIndex((prev) =>
+                                  Math.min(analysisMembers.length - 1, prev + 1)
+                                )
+                              }
+                              disabled={
+                                selectedAnalysisMemberIndex === analysisMembers.length - 1
+                              }
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: "10px",
+                                border: "1px solid #ccc",
+                                background:
+                                  selectedAnalysisMemberIndex === analysisMembers.length - 1
+                                    ? "#f8fafc"
+                                    : "white",
+                                cursor:
+                                  selectedAnalysisMemberIndex === analysisMembers.length - 1
+                                    ? "not-allowed"
+                                    : "pointer",
+                              }}
+                            >
+                              →
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -1213,11 +1283,17 @@ export default function GenericSetPage({
                           <div style={{ marginTop: "14px" }}>
                             <div
                               style={{
-                                fontWeight: "bold",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: "10px",
                                 marginBottom: "8px",
                               }}
                             >
-                              Voicing / rivolti dell’occorrenza
+                              <div style={{ fontWeight: "bold" }}>
+                                Voicing / rivolti dell’occorrenza
+                              </div>
+                              <ClassBadge>{analysisFilteredVoicings.length}</ClassBadge>
                             </div>
 
                             <div
@@ -1276,8 +1352,8 @@ export default function GenericSetPage({
                   <div style={{ marginTop: "12px", lineHeight: 1.8 }}>
                     <div>
                       <strong>
-                        {noteName.charAt(0).toUpperCase() + noteName.slice(1)}{" "}
-                        di partenza:
+                        {noteName.charAt(0).toUpperCase() + noteName.slice(1)} di
+                        partenza:
                       </strong>{" "}
                       {activeSet.forteName}
                     </div>
