@@ -46,6 +46,17 @@ function getClassKey(item) {
   return `${item.forteName || "n.d."}|${item.primeForm.join("-")}`;
 }
 
+function arePcArraysEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+
+  return true;
+}
+
 function getVoicingFinderByCardinality(cardinality) {
   if (cardinality === 3) return findVoicings;
   if (cardinality === 4) return findTetrachordVoicings;
@@ -335,8 +346,14 @@ export default function GenericSetPage({
 
   const analysisDegreeMap = useMemo(() => {
     if (!selectedAnalysisMember) return null;
-    return makeDegreeMapFromPrimeForm(selectedAnalysisMemberPrimeForm, "base", 0);
-  }, [selectedAnalysisMember, selectedAnalysisMemberPrimeForm]);
+
+    const map = new Map();
+    selectedAnalysisMember.forEach((pc, idx) => {
+      map.set(pc, idx + 1);
+    });
+
+    return map;
+  }, [selectedAnalysisMember]);
 
   const analysisVoicingFinder = useMemo(() => {
     if (!selectedAnalysisMember) return null;
@@ -440,25 +457,43 @@ export default function GenericSetPage({
   }, [analysisMode, analysisClasses, selectedAnalysisClassKey]);
 
   useEffect(() => {
-    setSelectedAnalysisMemberIndex(0);
+    if (!selectedAnalysisClass || !analysisMembers.length) {
+      setSelectedAnalysisMemberIndex(0);
+      setSelectedAnalysisVoicingIndex(0);
+      setAnalysisShowAllVoicings(true);
+      setAnalysisBassFilter("all");
+      return;
+    }
+
+    const transformedTarget = transformPcs(
+      selectedAnalysisClass.primeForm,
+      transformMode,
+      transformAmount
+    );
+
+    const matchingIndex = analysisMembers.findIndex((member) =>
+      arePcArraysEqual(member, transformedTarget)
+    );
+
+    setSelectedAnalysisMemberIndex(matchingIndex >= 0 ? matchingIndex : 0);
     setSelectedAnalysisVoicingIndex(0);
     setAnalysisShowAllVoicings(true);
     setAnalysisBassFilter("all");
-  }, [selectedAnalysisClassKey]);
+  }, [
+    selectedAnalysisClass,
+    analysisMembers,
+    transformMode,
+    transformAmount,
+  ]);
 
   useEffect(() => {
     setSelectedAnalysisVoicingIndex(0);
     setAnalysisShowAllVoicings(true);
-    setAnalysisBassFilter("all");
   }, [selectedAnalysisMemberIndex]);
 
   useEffect(() => {
     setSelectedAnalysisVoicingIndex(0);
   }, [maxSpan, excludeOpenStrings, analysisBassFilter]);
-
-  const isAnalysisMode =
-    !showComplement &&
-    (analysisMode === "subsets" || analysisMode === "supersets");
 
   const canRenderAnalysisVoicings =
     !!selectedAnalysisMember &&
