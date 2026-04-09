@@ -129,7 +129,7 @@ export default function GenericSetPage({
   const [selectedForte, setSelectedForte] = useState(keys[0]);
   const [maxSpan, setMaxSpan] = useState(DEFAULT_MAX_SPAN);
   const [selected, setSelected] = useState(0);
-  const [showAll, setShowAll] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const [showComplement, setShowComplement] = useState(false);
   const [excludeOpenStrings, setExcludeOpenStrings] = useState(false);
   const [analysisMode, setAnalysisMode] = useState("voicings");
@@ -141,7 +141,6 @@ export default function GenericSetPage({
     noteCount < 12 ? noteCount + 1 : 12
   );
 
-  const [connectionFilter, setConnectionFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
   const [displayMode, setDisplayMode] = useState("notes");
   const [bassFilter, setBassFilter] = useState("all");
@@ -154,7 +153,7 @@ export default function GenericSetPage({
     useState(0);
   const [selectedAnalysisVoicingIndex, setSelectedAnalysisVoicingIndex] =
     useState(0);
-  const [analysisShowAllVoicings, setAnalysisShowAllVoicings] = useState(true);
+  const [analysisShowAllVoicings, setAnalysisShowAllVoicings] = useState(false);
   const [analysisBassFilter, setAnalysisBassFilter] = useState("all");
 
   const sortedKeys = useMemo(() => {
@@ -263,9 +262,6 @@ export default function GenericSetPage({
       list = list.filter((v) => v.positions.every((p) => p.fret > 0));
     }
 
-    if (connectionFilter === "adjacent") list = list.filter((v) => !v.hasSkip);
-    if (connectionFilter === "skips") list = list.filter((v) => v.hasSkip);
-
     if (groupFilter !== "all") {
       list = list.filter((v) => v.stringPattern === groupFilter);
     }
@@ -279,14 +275,7 @@ export default function GenericSetPage({
     });
 
     return list;
-  }, [
-    rawVoicings,
-    excludeOpenStrings,
-    connectionFilter,
-    groupFilter,
-    bassFilter,
-    activeSet,
-  ]);
+  }, [rawVoicings, excludeOpenStrings, groupFilter, bassFilter, activeSet]);
 
   const subsetClasses = useMemo(() => {
     if (!activeSet || showComplement) return [];
@@ -335,7 +324,6 @@ export default function GenericSetPage({
   }, [analysisClasses, selectedAnalysisClassKey]);
 
   const analysisMembers = selectedAnalysisClass?.members || [];
-
   const selectedAnalysisMember =
     analysisMembers[selectedAnalysisMemberIndex] || null;
 
@@ -415,23 +403,9 @@ export default function GenericSetPage({
     selectedForte,
     maxSpan,
     excludeOpenStrings,
-    connectionFilter,
     groupFilter,
     bassFilter,
     displayMode,
-    transformMode,
-    transformAmount,
-  ]);
-
-  useEffect(() => {
-    setShowAll(true);
-  }, [
-    selectedForte,
-    maxSpan,
-    excludeOpenStrings,
-    connectionFilter,
-    groupFilter,
-    bassFilter,
     transformMode,
     transformAmount,
   ]);
@@ -460,7 +434,7 @@ export default function GenericSetPage({
     if (!selectedAnalysisClass || !analysisMembers.length) {
       setSelectedAnalysisMemberIndex(0);
       setSelectedAnalysisVoicingIndex(0);
-      setAnalysisShowAllVoicings(true);
+      setAnalysisShowAllVoicings(false);
       setAnalysisBassFilter("all");
       return;
     }
@@ -477,7 +451,7 @@ export default function GenericSetPage({
 
     setSelectedAnalysisMemberIndex(matchingIndex >= 0 ? matchingIndex : 0);
     setSelectedAnalysisVoicingIndex(0);
-    setAnalysisShowAllVoicings(true);
+    setAnalysisShowAllVoicings(false);
     setAnalysisBassFilter("all");
   }, [
     selectedAnalysisClass,
@@ -488,7 +462,7 @@ export default function GenericSetPage({
 
   useEffect(() => {
     setSelectedAnalysisVoicingIndex(0);
-    setAnalysisShowAllVoicings(true);
+    setAnalysisShowAllVoicings(false);
   }, [selectedAnalysisMemberIndex]);
 
   useEffect(() => {
@@ -546,7 +520,7 @@ export default function GenericSetPage({
                 onChange={(e) => {
                   setSelectedForte(e.target.value);
                   setSelected(0);
-                  setShowAll(true);
+                  setShowAll(false);
                   setShowComplement(false);
                 }}
                 style={{
@@ -722,32 +696,6 @@ export default function GenericSetPage({
                     }}
                   >
                     <div>
-                      <SectionTitle>Filtro connessione corde</SectionTitle>
-                      <div
-                        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                      >
-                        <PillButton
-                          active={connectionFilter === "all"}
-                          onClick={() => setConnectionFilter("all")}
-                        >
-                          Tutte
-                        </PillButton>
-                        <PillButton
-                          active={connectionFilter === "adjacent"}
-                          onClick={() => setConnectionFilter("adjacent")}
-                        >
-                          Solo adiacenti
-                        </PillButton>
-                        <PillButton
-                          active={connectionFilter === "skips"}
-                          onClick={() => setConnectionFilter("skips")}
-                        >
-                          Solo salti
-                        </PillButton>
-                      </div>
-                    </div>
-
-                    <div>
                       <SectionTitle>Gruppo corde</SectionTitle>
                       <div
                         style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
@@ -801,13 +749,13 @@ export default function GenericSetPage({
                       setMode={(m) => {
                         setTransformMode(m);
                         setSelected(0);
-                        setShowAll(true);
+                        setShowAll(false);
                       }}
                       amount={transformAmount}
                       setAmount={(n) => {
                         setTransformAmount(n);
                         setSelected(0);
-                        setShowAll(true);
+                        setShowAll(false);
                       }}
                     />
                   </div>
@@ -881,13 +829,13 @@ export default function GenericSetPage({
                       setMode={(m) => {
                         setTransformMode(m);
                         setSelected(0);
-                        setShowAll(true);
+                        setShowAll(false);
                       }}
                       amount={transformAmount}
                       setAmount={(n) => {
                         setTransformAmount(n);
                         setSelected(0);
-                        setShowAll(true);
+                        setShowAll(false);
                       }}
                     />
                   </div>
@@ -1037,7 +985,9 @@ export default function GenericSetPage({
                   )}
 
                   <Fretboard
-                    voicing={canRenderAnalysisVoicings ? selectedAnalysisVoicing : null}
+                    voicing={
+                      canRenderAnalysisVoicings ? selectedAnalysisVoicing : null
+                    }
                     allTargetPcs={selectedAnalysisMember || []}
                     allVoicings={
                       canRenderAnalysisVoicings ? analysisFilteredVoicings : []
@@ -1214,7 +1164,10 @@ export default function GenericSetPage({
                             }}
                           >
                             {analysisMembers.map((member, i) => (
-                              <option key={`${getClassKey(selectedAnalysisClass)}-${i}`} value={i}>
+                              <option
+                                key={`${getClassKey(selectedAnalysisClass)}-${i}`}
+                                value={i}
+                              >
                                 Occorrenza {i + 1} — [{member.join(",")}]
                               </option>
                             ))}
