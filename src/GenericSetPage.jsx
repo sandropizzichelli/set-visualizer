@@ -19,7 +19,13 @@ import {
 import GenericSetControlsPanel from "./GenericSetControlsPanel";
 import GenericSetFretboardPanel from "./GenericSetFretboardPanel";
 import GenericSetResultsPanel from "./GenericSetResultsPanel";
-import { getClassKey } from "./genericSetPageHelpers";
+import {
+  buildIntervalClassBreakdown,
+  buildIntervalClassPitchClassMap,
+  buildIntervalLegend,
+  buildIntervalMapFromOrderedPcs,
+  getClassKey,
+} from "./genericSetPageHelpers";
 import {
   getCurrentSearchParams,
   readBooleanParam,
@@ -32,7 +38,7 @@ import {
 } from "./urlState";
 
 const ANALYSIS_MODES = ["voicings", "subsets", "supersets"];
-const DISPLAY_MODES = ["notes", "degrees"];
+const DISPLAY_MODES = ["notes", "degrees", "intervals"];
 const TRANSFORM_MODES = ["base", "tn", "tni"];
 const BROWSE_MODES = ["forte", "iv"];
 
@@ -52,6 +58,29 @@ function buildIntervalVectorOptions(keys, dataMap) {
   return [...new Set(keys.map((key) => dataMap[key]?.iv).filter(Boolean))].sort(
     (first, second) => first.localeCompare(second)
   );
+}
+
+function readIntervalClassFilter(params, name) {
+  const value = params.get(name);
+  if (!value) return [];
+
+  return [...new Set(
+    value
+      .split(",")
+      .map((item) => Number.parseInt(item, 10))
+      .filter((item) => !Number.isNaN(item) && item >= 1 && item <= 6)
+  )].sort((first, second) => first - second);
+}
+
+function buildFilteredPitchClasses(intervalClassPitchClassMap, selectedIntervalClasses) {
+  if (!selectedIntervalClasses.length) return null;
+
+  const filtered = new Set();
+  selectedIntervalClasses.forEach((intervalClass) => {
+    intervalClassPitchClassMap?.get(intervalClass)?.forEach((pc) => filtered.add(pc));
+  });
+
+  return [...filtered];
 }
 
 function buildInitialUrlState(keys, dataMap, noteCount) {
@@ -108,6 +137,7 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
     }),
     analysisShowAllVoicings: readBooleanParam(params, "aShowAll", false),
     analysisBassFilter: readBassFilter(params, "abass", noteCount),
+    selectedIntervalClasses: readIntervalClassFilter(params, "ic"),
   };
 }
 
@@ -178,6 +208,9 @@ export default function GenericSetPage({
   );
   const [analysisBassFilter, setAnalysisBassFilter] = useState(
     initialUrlState.analysisBassFilter
+  );
+  const [selectedIntervalClasses, setSelectedIntervalClasses] = useState(
+    initialUrlState.selectedIntervalClasses
   );
   const [copyLinkStatus, setCopyLinkStatus] = useState("idle");
 
@@ -250,6 +283,17 @@ export default function GenericSetPage({
     [intervalVectorMap, selectedIntervalVector]
   );
 
+  const intervalVectorFamilyClasses = useMemo(
+    () =>
+      intervalVectorMatches.map((key) => ({
+        forteName: key,
+        primeForm: parsePfString(dataMap[key].pf),
+        iv: dataMap[key].iv,
+        cardinality: noteCount,
+      })),
+    [intervalVectorMatches, dataMap, noteCount]
+  );
+
   const activeSelectedForte = useMemo(() => {
     if (browseMode === "iv") {
       if (intervalVectorMatches.includes(selectedForte)) {
@@ -295,6 +339,10 @@ export default function GenericSetPage({
       transformMode,
       transformAmount
     );
+    const intervalMap = buildIntervalMapFromOrderedPcs(transformedPrimeForm);
+    const intervalLegend = buildIntervalLegend(transformedPrimeForm);
+    const intervalClassPitchClassMap =
+      buildIntervalClassPitchClassMap(transformedPrimeForm);
 
     return {
       basePcs,
@@ -302,6 +350,10 @@ export default function GenericSetPage({
       primeForm: basePcs,
       transformedPrimeForm,
       degreeMap,
+      intervalMap,
+      intervalLegend,
+      intervalClassBreakdown: buildIntervalClassBreakdown(setDataRaw.iv),
+      intervalClassPitchClassMap,
       forteName: activeSelectedForte,
       pf: setDataRaw.pf,
       iv: setDataRaw.iv,
@@ -421,6 +473,63 @@ export default function GenericSetPage({
     return map;
   }, [selectedAnalysisMember]);
 
+  const analysisIntervalMap = useMemo(
+    () => buildIntervalMapFromOrderedPcs(selectedAnalysisMember || []),
+    [selectedAnalysisMember]
+  );
+
+  const analysisIntervalLegend = useMemo(
+    () => buildIntervalLegend(selectedAnalysisMember || []),
+    [selectedAnalysisMember]
+  );
+
+  const analysisIntervalClassBreakdown = useMemo(() => {
+    if (!selectedAnalysisClass?.iv) return [];
+    return buildIntervalClassBreakdown(selectedAnalysisClass.iv);
+  }, [selectedAnalysisClass]);
+
+  const analysisIntervalClassPitchClassMap = useMemo(
+    () => buildIntervalClassPitchClassMap(selectedAnalysisMember || []),
+    [selectedAnalysisMember]
+  );
+
+  const activeSelectedIntervalClasses = useMemo(() => {
+    const availableIntervalClasses =
+      analysisMode === "voicings"
+        ? activeSet?.intervalClassBreakdown || []
+        : analysisIntervalClassBreakdown;
+
+    const allowed = new Set(
+      availableIntervalClasses
+        .filter((item) => item.count > 0)
+        .map((item) => item.ic)
+    );
+
+    return selectedIntervalClasses.filter((intervalClass) => allowed.has(intervalClass));
+  }, [analysisMode, activeSet, analysisIntervalClassBreakdown, selectedIntervalClasses]);
+
+  const filteredPrimaryTargetPcs = useMemo(
+    () =>
+      buildFilteredPitchClasses(
+        activeSet?.intervalClassPitchClassMap,
+        activeSelectedIntervalClasses
+      ) || activeSet?.pcs || [],
+    [activeSet, activeSelectedIntervalClasses]
+  );
+
+  const filteredAnalysisTargetPcs = useMemo(
+    () =>
+      buildFilteredPitchClasses(
+        analysisIntervalClassPitchClassMap,
+        activeSelectedIntervalClasses
+      ) || selectedAnalysisMember || [],
+    [
+      analysisIntervalClassPitchClassMap,
+      selectedAnalysisMember,
+      activeSelectedIntervalClasses,
+    ]
+  );
+
   const analysisVoicingFinder = useMemo(() => {
     if (!selectedAnalysisMember) return null;
     return getVoicingFinderByCardinality(selectedAnalysisMember.length);
@@ -534,6 +643,10 @@ export default function GenericSetPage({
   const handleBrowseModeChange = (mode) => {
     setBrowseMode(mode);
 
+    if (mode === "iv" && displayMode === "notes") {
+      setDisplayMode("intervals");
+    }
+
     if (mode === "iv") {
       const nextIntervalVector =
         dataMap[activeSelectedForte]?.iv || selectedIntervalVector;
@@ -572,6 +685,18 @@ export default function GenericSetPage({
     resetPrimaryVoicingSelection();
     setShowComplement(false);
     resetAnalysisClassSelection({ clearClass: true });
+  };
+
+  const handleToggleIntervalClass = (intervalClass) => {
+    setSelectedIntervalClasses((current) =>
+      current.includes(intervalClass)
+        ? current.filter((item) => item !== intervalClass)
+        : [...current, intervalClass].sort((first, second) => first - second)
+    );
+  };
+
+  const handleClearIntervalClassFilter = () => {
+    setSelectedIntervalClasses([]);
   };
 
   const handleMaxSpanChange = (span) => {
@@ -689,6 +814,13 @@ export default function GenericSetPage({
       setSearchParam(params, "superset", supersetTargetCardinality);
       setSearchParam(params, "group", groupFilter === "all" ? null : groupFilter);
       setSearchParam(params, "view", displayMode === "notes" ? null : displayMode);
+      setSearchParam(
+        params,
+        "ic",
+        activeSelectedIntervalClasses.length
+          ? activeSelectedIntervalClasses.join(",")
+          : null
+      );
       setSearchParam(params, "bass", bassFilter === "all" ? null : bassFilter);
 
       setSearchParam(params, "transform", transformMode === "base" ? null : transformMode);
@@ -739,6 +871,7 @@ export default function GenericSetPage({
     supersetTargetCardinality,
     groupFilter,
     displayMode,
+    activeSelectedIntervalClasses,
     bassFilter,
     transformMode,
     transformAmount,
@@ -803,25 +936,37 @@ export default function GenericSetPage({
 
         <div className="set-page__grid">
           <GenericSetFretboardPanel
-            showComplement={showComplement}
-            analysisMode={analysisMode}
-            noteName={noteName}
-            activeSet={activeSet}
-            selectedVoicing={selectedVoicing}
-            filteredVoicings={filteredVoicings}
-            showAll={showAll}
-            displayMode={displayMode}
-            selectedAnalysisClass={selectedAnalysisClass}
-            selectedAnalysisMember={selectedAnalysisMember}
-            canRenderAnalysisVoicings={canRenderAnalysisVoicings}
-            selectedAnalysisVoicing={selectedAnalysisVoicing}
-            analysisFilteredVoicings={analysisFilteredVoicings}
-            analysisShowAllVoicings={analysisShowAllVoicings}
-            analysisDegreeMap={analysisDegreeMap}
-            complementData={complementData}
-          />
+          showComplement={showComplement}
+          analysisMode={analysisMode}
+          browseMode={browseMode}
+          noteName={noteName}
+          activeSet={activeSet}
+          selectedVoicing={selectedVoicing}
+          filteredVoicings={filteredVoicings}
+          showAll={showAll}
+          displayMode={displayMode}
+          intervalVectorFamilyClasses={intervalVectorFamilyClasses}
+          selectedIntervalVector={selectedIntervalVector}
+          selectedIntervalClasses={activeSelectedIntervalClasses}
+          onToggleIntervalClass={handleToggleIntervalClass}
+          onClearIntervalClassFilter={handleClearIntervalClassFilter}
+          filteredPrimaryTargetPcs={filteredPrimaryTargetPcs}
+          selectedAnalysisClass={selectedAnalysisClass}
+          selectedAnalysisMember={selectedAnalysisMember}
+          filteredAnalysisTargetPcs={filteredAnalysisTargetPcs}
+          canRenderAnalysisVoicings={canRenderAnalysisVoicings}
+          selectedAnalysisVoicing={selectedAnalysisVoicing}
+          analysisFilteredVoicings={analysisFilteredVoicings}
+          analysisShowAllVoicings={analysisShowAllVoicings}
+          analysisDegreeMap={analysisDegreeMap}
+          analysisIntervalMap={analysisIntervalMap}
+          analysisIntervalLegend={analysisIntervalLegend}
+          analysisIntervalClassBreakdown={analysisIntervalClassBreakdown}
+          complementData={complementData}
+        />
 
           <GenericSetResultsPanel
+            browseMode={browseMode}
             showComplement={showComplement}
             analysisMode={analysisMode}
             filteredVoicings={filteredVoicings}
@@ -831,6 +976,9 @@ export default function GenericSetPage({
             onSelectVoicing={handleSelectVoicing}
             displayMode={displayMode}
             activeSet={activeSet}
+            intervalVectorFamilyClasses={intervalVectorFamilyClasses}
+            selectedIntervalVector={selectedIntervalVector}
+            onSelectFamilyClass={handleSelectedForteChange}
             analysisClasses={analysisClasses}
             subsetTargetCardinality={subsetTargetCardinality}
             supersetTargetCardinality={supersetTargetCardinality}
@@ -849,6 +997,7 @@ export default function GenericSetPage({
             activeSelectedAnalysisVoicingIndex={activeSelectedAnalysisVoicingIndex}
             onSelectAnalysisVoicing={handleSelectAnalysisVoicing}
             analysisDegreeMap={analysisDegreeMap}
+            analysisIntervalMap={analysisIntervalMap}
             complementName={complementName}
             complementData={complementData}
           />

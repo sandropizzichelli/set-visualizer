@@ -5,16 +5,15 @@ import {
   BassButtons,
   TransformButtons,
 } from "./SetControls";
-import { getCardinalityLabel } from "./genericSetPageHelpers";
+import {
+  formatIntervalVector,
+  getCardinalityLabel,
+} from "./genericSetPageHelpers";
 
 function getAnalysisLabel(analysisMode) {
   if (analysisMode === "subsets") return "Subset-class";
   if (analysisMode === "supersets") return "Superset-class";
   return "Voicing";
-}
-
-function formatIntervalVector(intervalVector) {
-  return `⟨${intervalVector.split("").join(",")}⟩`;
 }
 
 function getCopyLinkLabel(copyLinkStatus) {
@@ -350,6 +349,12 @@ export default function GenericSetControlsPanel({
                       >
                         {degreeButtonLabel}
                       </PillButton>
+                      <PillButton
+                        active={displayMode === "intervals"}
+                        onClick={() => onDisplayModeChange("intervals")}
+                      >
+                        Intervalli
+                      </PillButton>
                     </div>
                   </div>
                 </div>
@@ -413,7 +418,19 @@ export default function GenericSetControlsPanel({
                       >
                         {degreeButtonLabel}
                       </PillButton>
+                      <PillButton
+                        active={displayMode === "intervals"}
+                        onClick={() => onDisplayModeChange("intervals")}
+                      >
+                        Intervalli
+                      </PillButton>
                     </div>
+                    {browseMode === "iv" && (
+                      <p className="helper-text">
+                        In modalita intervallare il manico colora e nomina ogni pitch class
+                        secondo la sua distanza dal riferimento 0 della classe attiva.
+                      </p>
+                    )}
                   </div>
                 </div>
 

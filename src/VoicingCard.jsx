@@ -1,6 +1,7 @@
 import React from "react";
 import { STRINGS, PC_TO_NAME } from "./setData";
 import { getBassDegree } from "./setUtils";
+import { formatSemitoneLabel } from "./genericSetPageHelpers";
 
 function MetaChip({ label, value }) {
   return (
@@ -20,11 +21,14 @@ export default function VoicingCard({
   showPrimeForm,
   showForte,
   degreeMap,
+  intervalMap,
 }) {
   const notes = voicing.positions.map((position) =>
     displayMode === "degrees"
       ? String(degreeMap?.get(position.pc) ?? "")
-      : PC_TO_NAME[position.pc]
+      : displayMode === "intervals"
+        ? formatSemitoneLabel(intervalMap?.get(position.pc) ?? 0)
+        : PC_TO_NAME[position.pc]
   );
 
   const label = voicing.positions

@@ -1,7 +1,81 @@
 import React from "react";
 import Fretboard from "./Fretboard";
+import { PC_TO_NAME } from "./setData";
+import { formatIntervalVector } from "./genericSetPageHelpers";
+
+function IntervalLegend({
+  title,
+  legend,
+  breakdown,
+  vector,
+  selectedIntervalClasses,
+  onToggleIntervalClass,
+  onClearIntervalClassFilter,
+  notePrefix = "Riferimento 0",
+}) {
+  if (!legend?.length) return null;
+
+  const hasActiveFilter = selectedIntervalClasses.length > 0;
+
+  return (
+    <div className="interval-legend-panel">
+      <div className="picker-head">
+        <div className="section-title">{title}</div>
+        <div className="interval-legend-panel__actions">
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={onClearIntervalClassFilter}
+              className="interval-filter-reset"
+            >
+              Mostra tutto
+            </button>
+          )}
+          {vector && <span className="class-badge">{formatIntervalVector(vector)}</span>}
+        </div>
+      </div>
+
+      <div className="interval-legend">
+        {legend.map((item) => (
+          <div key={`${item.pc}-${item.label}`} className="interval-legend__chip">
+            <span>{item.label}</span>
+            <strong>{PC_TO_NAME[item.pc]}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="interval-breakdown interval-breakdown--compact">
+        {breakdown.map((item) => (
+          <button
+            key={item.ic}
+            type="button"
+            onClick={() => onToggleIntervalClass(item.ic)}
+            disabled={item.count === 0}
+            className={
+              selectedIntervalClasses.includes(item.ic)
+                ? "interval-breakdown__chip interval-breakdown__chip--active"
+                : "interval-breakdown__chip"
+            }
+          >
+            <span>{`ic${item.ic}`}</span>
+            <strong>{item.count}</strong>
+          </button>
+        ))}
+      </div>
+
+      <p className="helper-text helper-text--small">
+        {notePrefix}: {PC_TO_NAME[legend[0].pc]}
+      </p>
+      <p className="helper-text helper-text--small">
+        Clicca un `ic` per isolare sul manico solo le note coinvolte in quella
+        famiglia intervallare.
+      </p>
+    </div>
+  );
+}
 
 export default function GenericSetFretboardPanel({
+  browseMode,
   showComplement,
   analysisMode,
   noteName,
@@ -10,15 +84,27 @@ export default function GenericSetFretboardPanel({
   filteredVoicings,
   showAll,
   displayMode,
+  intervalVectorFamilyClasses,
+  selectedIntervalVector,
+  selectedIntervalClasses,
+  onToggleIntervalClass,
+  onClearIntervalClassFilter,
+  filteredPrimaryTargetPcs,
   selectedAnalysisClass,
   selectedAnalysisMember,
+  filteredAnalysisTargetPcs,
   canRenderAnalysisVoicings,
   selectedAnalysisVoicing,
   analysisFilteredVoicings,
   analysisShowAllVoicings,
   analysisDegreeMap,
+  analysisIntervalMap,
+  analysisIntervalLegend,
+  analysisIntervalClassBreakdown,
   complementData,
 }) {
+  const showIntervalLegend = browseMode === "iv" || displayMode === "intervals";
+
   return (
     <div className="set-panel">
       <div className="panel-header">
@@ -35,9 +121,9 @@ export default function GenericSetFretboardPanel({
         analysisMode === "voicings" ? (
           <div className="panel-stack">
             <p className="helper-text">
-              Le caselle ambrate appartengono al {noteName} trasformato. Le caselle
+              Le caselle attenuate appartengono al {noteName} trasformato. Le caselle
               evidenziate mostrano la forma selezionata, oppure tutte le forme se
-              l&apos;opzione è attiva.
+              l&apos;opzione e attiva.
             </p>
 
             {activeSet && (
@@ -48,17 +134,44 @@ export default function GenericSetFretboardPanel({
                 </div>
                 <div className="info-note">
                   Nome Forte del {noteName}: {activeSet.forteName}
+                  {browseMode === "iv" && (
+                    <>
+                      {" | "}
+                      famiglia IV: {formatIntervalVector(selectedIntervalVector)} ({intervalVectorFamilyClasses.length} classi)
+                    </>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {showIntervalLegend && activeSet && (
+              <IntervalLegend
+                title="Mappa intervallare"
+                legend={activeSet.intervalLegend}
+                breakdown={activeSet.intervalClassBreakdown}
+                vector={activeSet.iv}
+                selectedIntervalClasses={selectedIntervalClasses}
+                onToggleIntervalClass={onToggleIntervalClass}
+                onClearIntervalClassFilter={onClearIntervalClassFilter}
+              />
+            )}
+
+            {selectedIntervalClasses.length > 0 && !showAll && (
+              <div className="info-note info-note--accent">
+                Le linee sul manico collegano le note della forma selezionata che
+                producono gli intervalli `ic{selectedIntervalClasses.join(", ic")}`.
               </div>
             )}
 
             <Fretboard
               voicing={selectedVoicing}
-              allTargetPcs={activeSet ? activeSet.pcs : []}
+              allTargetPcs={filteredPrimaryTargetPcs}
               allVoicings={filteredVoicings}
               showAll={showAll}
               displayMode={displayMode}
               degreeMap={activeSet?.degreeMap}
+              intervalMap={activeSet?.intervalMap}
+              selectedIntervalClasses={selectedIntervalClasses}
             />
           </div>
         ) : (
@@ -71,7 +184,7 @@ export default function GenericSetFretboardPanel({
             {selectedAnalysisClass && (
               <div className="info-note">
                 Classe selezionata: {selectedAnalysisClass.forteName || "n.d."} | PF
-                [{selectedAnalysisClass.primeForm.join(",")}]
+                [{selectedAnalysisClass.primeForm.join(",")}] | IV {formatIntervalVector(selectedAnalysisClass.iv)}
               </div>
             )}
 
@@ -81,20 +194,35 @@ export default function GenericSetFretboardPanel({
               </div>
             )}
 
+            {showIntervalLegend && selectedAnalysisClass && (
+              <IntervalLegend
+                title="Profilo intervallare dell'occorrenza"
+                legend={analysisIntervalLegend}
+                breakdown={analysisIntervalClassBreakdown}
+                vector={selectedAnalysisClass.iv}
+                selectedIntervalClasses={selectedIntervalClasses}
+                onToggleIntervalClass={onToggleIntervalClass}
+                onClearIntervalClassFilter={onClearIntervalClassFilter}
+                notePrefix="Riferimento 0 dell'occorrenza"
+              />
+            )}
+
             {selectedAnalysisMember && !canRenderAnalysisVoicings && (
               <div className="info-note">
-                Cardinalità {selectedAnalysisMember.length}: sul manico vengono mostrate
+                Cardinalita {selectedAnalysisMember.length}: sul manico vengono mostrate
                 le pitch classes dell&apos;occorrenza, non un voicing simultaneo.
               </div>
             )}
 
             <Fretboard
               voicing={canRenderAnalysisVoicings ? selectedAnalysisVoicing : null}
-              allTargetPcs={selectedAnalysisMember || []}
+              allTargetPcs={filteredAnalysisTargetPcs}
               allVoicings={canRenderAnalysisVoicings ? analysisFilteredVoicings : []}
               showAll={canRenderAnalysisVoicings ? analysisShowAllVoicings : false}
               displayMode={displayMode}
               degreeMap={analysisDegreeMap}
+              intervalMap={analysisIntervalMap}
+              selectedIntervalClasses={selectedIntervalClasses}
             />
           </div>
         )
@@ -112,6 +240,7 @@ export default function GenericSetFretboardPanel({
             showAll={false}
             displayMode="notes"
             degreeMap={null}
+            intervalMap={null}
             highlightAllAsActive={true}
           />
         </div>

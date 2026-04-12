@@ -2,7 +2,12 @@ import React from "react";
 import { PC_TO_NAME } from "./setData";
 import { BassButtons } from "./SetControls";
 import VoicingCard from "./VoicingCard";
-import { getCardinalityLabel, getClassKey } from "./genericSetPageHelpers";
+import {
+  buildIntervalClassBreakdown,
+  formatIntervalVector,
+  getCardinalityLabel,
+  getClassKey,
+} from "./genericSetPageHelpers";
 
 function ClassBadge({ children }) {
   return <span className="class-badge">{children}</span>;
@@ -36,7 +41,39 @@ function ClassResultRow({ item, active, onClick }) {
   );
 }
 
+function FamilyClassCard({ item, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={active ? "family-class-card family-class-card--active" : "family-class-card"}
+    >
+      <div className="family-class-card__top">
+        <div className="family-class-card__title">{item.forteName || "n.d."}</div>
+        <span className="class-badge">{formatIntervalVector(item.iv)}</span>
+      </div>
+      <div className="family-class-card__meta">PF [{item.primeForm.join(",")}]</div>
+    </button>
+  );
+}
+
+function IntervalBreakdown({ intervalVector }) {
+  const breakdown = buildIntervalClassBreakdown(intervalVector);
+
+  return (
+    <div className="interval-breakdown">
+      {breakdown.map((item) => (
+        <div key={item.ic} className="interval-breakdown__chip">
+          <span>{`ic${item.ic}`}</span>
+          <strong>{item.count}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function GenericSetResultsPanel({
+  browseMode,
   showComplement,
   analysisMode,
   filteredVoicings,
@@ -46,6 +83,9 @@ export default function GenericSetResultsPanel({
   onSelectVoicing,
   displayMode,
   activeSet,
+  intervalVectorFamilyClasses,
+  selectedIntervalVector,
+  onSelectFamilyClass,
   analysisClasses,
   subsetTargetCardinality,
   supersetTargetCardinality,
@@ -64,6 +104,7 @@ export default function GenericSetResultsPanel({
   activeSelectedAnalysisVoicingIndex,
   onSelectAnalysisVoicing,
   analysisDegreeMap,
+  analysisIntervalMap,
   complementName,
   complementData,
 }) {
@@ -80,7 +121,7 @@ export default function GenericSetResultsPanel({
             <div className="panel-header">
               <div className="panel-header__copy">
                 <div className="eyebrow">Catalogo dei voicing</div>
-                <h2>Possibilità trovate</h2>
+                <h2>Possibilita trovate</h2>
               </div>
               <ClassBadge>{filteredVoicings.length}</ClassBadge>
             </div>
@@ -88,6 +129,39 @@ export default function GenericSetResultsPanel({
             <p className="helper-text">
               {filteredVoicings.length} forme complessive per il {noteName} selezionato.
             </p>
+
+            {browseMode === "iv" && activeSet && (
+              <div className="analysis-card">
+                <div className="panel-stack">
+                  <div className="picker-head">
+                    <div className="section-title">Famiglia interval vector</div>
+                    <ClassBadge>{intervalVectorFamilyClasses.length}</ClassBadge>
+                  </div>
+
+                  <div className="detail-grid">
+                    <DetailChip
+                      label="IV condiviso"
+                      value={formatIntervalVector(selectedIntervalVector)}
+                    />
+                    <DetailChip label="Classe attiva" value={activeSet.forteName || "n.d."} />
+                    <DetailChip label="Prime form" value={`[${activeSet.primeForm.join(",")}]`} />
+                  </div>
+
+                  <IntervalBreakdown intervalVector={selectedIntervalVector} />
+
+                  <div className="family-class-grid">
+                    {intervalVectorFamilyClasses.map((item) => (
+                      <FamilyClassCard
+                        key={`family-${item.forteName}`}
+                        item={item}
+                        active={item.forteName === activeSet.forteName}
+                        onClick={() => onSelectFamilyClass(item.forteName)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="results-scroll">
               {filteredVoicings.map((voicing, index) => (
@@ -103,6 +177,7 @@ export default function GenericSetResultsPanel({
                   showPrimeForm={true}
                   showForte={true}
                   degreeMap={activeSet?.degreeMap}
+                  intervalMap={activeSet?.intervalMap}
                 />
               ))}
 
@@ -198,7 +273,7 @@ export default function GenericSetResultsPanel({
                               key={`${getClassKey(selectedAnalysisClass)}-${index}`}
                               value={index}
                             >
-                              Occorrenza {index + 1} — [{member.join(",")}]
+                              Occorrenza {index + 1} - [{member.join(",")}]
                             </option>
                           ))}
                         </select>
@@ -269,6 +344,7 @@ export default function GenericSetResultsPanel({
                               showPrimeForm={true}
                               showForte={true}
                               degreeMap={analysisDegreeMap}
+                              intervalMap={analysisIntervalMap}
                             />
                           ))}
 
@@ -313,7 +389,7 @@ export default function GenericSetResultsPanel({
                 <strong>Prime form:</strong> ({activeSet.pf})
               </div>
               <div>
-                <strong>Vettore intervallare:</strong> ⟨{activeSet.iv.split("").join(",")}⟩
+                <strong>Vettore intervallare:</strong> {formatIntervalVector(activeSet.iv)}
               </div>
 
               <div className="complement-card">
@@ -324,13 +400,11 @@ export default function GenericSetResultsPanel({
                   <strong>Prime form:</strong> ({complementData.pf})
                 </div>
                 <div>
-                  <strong>Vettore intervallare:</strong> ⟨
-                  {complementData.iv.split("").join(",")}
-                  ⟩
+                  <strong>Vettore intervallare:</strong> {formatIntervalVector(complementData.iv)}
                 </div>
                 <div>
                   <strong>Pitch classes:</strong>{" "}
-                  {complementData.pcs.map((pc) => PC_TO_NAME[pc]).join(" – ")}
+                  {complementData.pcs.map((pc) => PC_TO_NAME[pc]).join(" - ")}
                 </div>
               </div>
             </div>
