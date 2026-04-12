@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   TETRACHORD_KEYS,
   PENTACHORD_KEYS,
@@ -15,6 +15,19 @@ import {
 import { PillButton } from "./SetControls";
 import GenericSetPage from "./GenericSetPage";
 import TricordPage from "./TricordPage";
+import {
+  getCurrentSearchParams,
+  readEnumParam,
+  replaceSearchParams,
+  setSearchParam,
+} from "./urlState";
+
+const PAGE_OPTIONS = ["tricordi", "tetracordi", "pentacordi", "esacordi"];
+
+function getInitialPage() {
+  const params = getCurrentSearchParams();
+  return readEnumParam(params, "page", PAGE_OPTIONS, "tricordi");
+}
 
 function TetrachordPage() {
   return (
@@ -115,7 +128,13 @@ function PageSwitcher({ page, setPage }) {
 }
 
 export default function SetVisualizer() {
-  const [page, setPage] = useState("tricordi");
+  const [page, setPage] = useState(getInitialPage);
+
+  useEffect(() => {
+    replaceSearchParams((params) => {
+      setSearchParam(params, "page", page);
+    });
+  }, [page]);
 
   return (
     <>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { DEFAULT_MAX_SPAN, PC_TO_NAME } from "./setData";
+import { DEFAULT_MAX_SPAN } from "./setData";
 import {
   parsePfString,
   transformPcs,
@@ -16,45 +16,81 @@ import {
   findPentachordVoicings,
   findHexachordVoicings,
 } from "./setUtils";
-import Fretboard from "./Fretboard";
-import VoicingCard from "./VoicingCard";
+import GenericSetControlsPanel from "./GenericSetControlsPanel";
+import GenericSetFretboardPanel from "./GenericSetFretboardPanel";
+import GenericSetResultsPanel from "./GenericSetResultsPanel";
+import { getClassKey } from "./genericSetPageHelpers";
 import {
-  PillButton,
-  SectionTitle,
-  BassButtons,
-  TransformButtons,
-} from "./SetControls";
+  getCurrentSearchParams,
+  readBooleanParam,
+  readEnumParam,
+  readIntegerParam,
+  readStringParam,
+  replaceSearchParams,
+  setBooleanSearchParam,
+  setSearchParam,
+} from "./urlState";
 
-function getCardinalityLabel(n) {
-  const labels = {
-    3: "Tricordi",
-    4: "Tetracordi",
-    5: "Pentacordi",
-    6: "Esacordi",
-    7: "Eptacordi",
-    8: "Ottacordi",
-    9: "Enneacordi",
-    10: "Decacordi",
-    11: "Undecacordi",
-    12: "Dodecacordi",
-  };
+const ANALYSIS_MODES = ["voicings", "subsets", "supersets"];
+const DISPLAY_MODES = ["notes", "degrees"];
+const TRANSFORM_MODES = ["base", "tn", "tni"];
 
-  return labels[n] || `Cardinalità ${n}`;
-}
+function readBassFilter(params, name, noteCount) {
+  const value = params.get(name);
+  if (!value || value === "all") return "all";
 
-function getClassKey(item) {
-  return `${item.forteName || "n.d."}|${item.primeForm.join("-")}`;
-}
-
-function arePcArraysEqual(a, b) {
-  if (!a || !b) return false;
-  if (a.length !== b.length) return false;
-
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1 || parsed > noteCount) {
+    return "all";
   }
 
-  return true;
+  return parsed;
+}
+
+function buildInitialUrlState(keys, noteCount) {
+  const params = getCurrentSearchParams();
+
+  return {
+    selectedForte: readStringParam(params, "forte", keys[0], keys),
+    maxSpan: readIntegerParam(params, "span", DEFAULT_MAX_SPAN, {
+      min: 2,
+      max: 8,
+    }),
+    selected: readIntegerParam(params, "voicing", 0, { min: 0 }),
+    showAll: readBooleanParam(params, "showAll", false),
+    showComplement: readBooleanParam(params, "complement", false),
+    excludeOpenStrings: readBooleanParam(params, "excludeOpen", false),
+    analysisMode: readEnumParam(params, "analysis", ANALYSIS_MODES, "voicings"),
+    subsetTargetCardinality: readIntegerParam(
+      params,
+      "subset",
+      noteCount > 3 ? noteCount - 1 : 3,
+      { min: 3, max: Math.max(3, noteCount - 1) }
+    ),
+    supersetTargetCardinality: readIntegerParam(
+      params,
+      "superset",
+      noteCount < 12 ? noteCount + 1 : 12,
+      { min: Math.min(noteCount + 1, 12), max: 12 }
+    ),
+    groupFilter: readStringParam(params, "group", "all"),
+    displayMode: readEnumParam(params, "view", DISPLAY_MODES, "notes"),
+    bassFilter: readBassFilter(params, "bass", noteCount),
+    transformMode: readEnumParam(params, "transform", TRANSFORM_MODES, "base"),
+    transformAmount: readIntegerParam(params, "amount", 0, {
+      min: 0,
+      max: 11,
+    }),
+    selectedAnalysisClassKey: readStringParam(params, "aclass", null),
+    selectedAnalysisMemberIndex: readIntegerParam(params, "amember", 0, {
+      min: 0,
+    }),
+    selectedAnalysisVoicingIndex: readIntegerParam(params, "avoicing", 0, {
+      min: 0,
+    }),
+    analysisShowAllVoicings: readBooleanParam(params, "aShowAll", false),
+    analysisBassFilter: readBassFilter(params, "abass", noteCount),
+  };
 }
 
 function getVoicingFinderByCardinality(cardinality) {
@@ -63,86 +99,6 @@ function getVoicingFinderByCardinality(cardinality) {
   if (cardinality === 5) return findPentachordVoicings;
   if (cardinality === 6) return findHexachordVoicings;
   return null;
-}
-
-function ClassBadge({ children }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "4px 10px",
-        borderRadius: "999px",
-        background: "#e2e8f0",
-        fontSize: "12px",
-        fontWeight: "bold",
-        color: "#111",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function DetailChip({ label, value }) {
-  return (
-    <div
-      style={{
-        padding: "10px 12px",
-        borderRadius: "12px",
-        background: "white",
-        border: "1px solid #dbe3ee",
-      }}
-    >
-      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "4px" }}>
-        {label}
-      </div>
-      <div style={{ fontSize: "13px", fontWeight: "bold", color: "#111" }}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function ClassResultRow({ item, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: "100%",
-        padding: "12px 14px",
-        borderRadius: "12px",
-        border: active ? "2px solid #111" : "1px solid #ddd",
-        background: active ? "#e2e8f0" : "white",
-        marginBottom: "10px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: "12px",
-        cursor: "pointer",
-        textAlign: "left",
-      }}
-    >
-      <div>
-        <div style={{ fontWeight: "bold", fontSize: "15px" }}>
-          {item.forteName || "n.d."}
-        </div>
-        <div
-          style={{
-            marginTop: "4px",
-            fontSize: "12px",
-            color: "#666",
-          }}
-        >
-          PF [{item.primeForm.join(",")}] · {getCardinalityLabel(item.cardinality)}
-        </div>
-      </div>
-
-      <ClassBadge>× {item.concreteCount}</ClassBadge>
-    </button>
-  );
 }
 
 export default function GenericSetPage({
@@ -157,35 +113,50 @@ export default function GenericSetPage({
   degreeButtonLabel,
   noteCount,
 }) {
-  const [selectedForte, setSelectedForte] = useState(keys[0]);
-  const [maxSpan, setMaxSpan] = useState(DEFAULT_MAX_SPAN);
-  const [selected, setSelected] = useState(0);
-  const [showAll, setShowAll] = useState(false);
-  const [showComplement, setShowComplement] = useState(false);
-  const [excludeOpenStrings, setExcludeOpenStrings] = useState(false);
-  const [analysisMode, setAnalysisMode] = useState("voicings");
+  const initialUrlState = buildInitialUrlState(keys, noteCount);
+
+  const [selectedForte, setSelectedForte] = useState(initialUrlState.selectedForte);
+  const [maxSpan, setMaxSpan] = useState(initialUrlState.maxSpan);
+  const [selected, setSelected] = useState(initialUrlState.selected);
+  const [showAll, setShowAll] = useState(initialUrlState.showAll);
+  const [showComplement, setShowComplement] = useState(
+    initialUrlState.showComplement
+  );
+  const [excludeOpenStrings, setExcludeOpenStrings] = useState(
+    initialUrlState.excludeOpenStrings
+  );
+  const [analysisMode, setAnalysisMode] = useState(initialUrlState.analysisMode);
 
   const [subsetTargetCardinality, setSubsetTargetCardinality] = useState(
-    noteCount > 3 ? noteCount - 1 : 3
+    initialUrlState.subsetTargetCardinality
   );
   const [supersetTargetCardinality, setSupersetTargetCardinality] = useState(
-    noteCount < 12 ? noteCount + 1 : 12
+    initialUrlState.supersetTargetCardinality
   );
 
-  const [groupFilter, setGroupFilter] = useState("all");
-  const [displayMode, setDisplayMode] = useState("notes");
-  const [bassFilter, setBassFilter] = useState("all");
-  const [transformMode, setTransformMode] = useState("base");
-  const [transformAmount, setTransformAmount] = useState(0);
+  const [groupFilter, setGroupFilter] = useState(initialUrlState.groupFilter);
+  const [displayMode, setDisplayMode] = useState(initialUrlState.displayMode);
+  const [bassFilter, setBassFilter] = useState(initialUrlState.bassFilter);
+  const [transformMode, setTransformMode] = useState(
+    initialUrlState.transformMode
+  );
+  const [transformAmount, setTransformAmount] = useState(
+    initialUrlState.transformAmount
+  );
 
-  const [selectedAnalysisClassKey, setSelectedAnalysisClassKey] =
-    useState(null);
+  const [selectedAnalysisClassKey, setSelectedAnalysisClassKey] = useState(
+    initialUrlState.selectedAnalysisClassKey
+  );
   const [selectedAnalysisMemberIndex, setSelectedAnalysisMemberIndex] =
-    useState(0);
+    useState(initialUrlState.selectedAnalysisMemberIndex);
   const [selectedAnalysisVoicingIndex, setSelectedAnalysisVoicingIndex] =
-    useState(0);
-  const [analysisShowAllVoicings, setAnalysisShowAllVoicings] = useState(false);
-  const [analysisBassFilter, setAnalysisBassFilter] = useState("all");
+    useState(initialUrlState.selectedAnalysisVoicingIndex);
+  const [analysisShowAllVoicings, setAnalysisShowAllVoicings] = useState(
+    initialUrlState.analysisShowAllVoicings
+  );
+  const [analysisBassFilter, setAnalysisBassFilter] = useState(
+    initialUrlState.analysisBassFilter
+  );
 
   const sortedKeys = useMemo(() => {
     return [...keys].sort((a, b) => {
@@ -346,17 +317,26 @@ export default function GenericSetPage({
   }, [analysisMode, subsetClasses, supersetClasses]);
 
   const selectedAnalysisClass = useMemo(() => {
-    if (!analysisClasses.length) return null;
+    if (analysisMode === "voicings" || !analysisClasses.length) return null;
     return (
       analysisClasses.find(
         (item) => getClassKey(item) === selectedAnalysisClassKey
       ) || analysisClasses[0]
     );
-  }, [analysisClasses, selectedAnalysisClassKey]);
+  }, [analysisMode, analysisClasses, selectedAnalysisClassKey]);
 
-  const analysisMembers = selectedAnalysisClass?.members || [];
+  const analysisMembers = useMemo(
+    () => selectedAnalysisClass?.members || [],
+    [selectedAnalysisClass]
+  );
+
+  const activeSelectedAnalysisMemberIndex = useMemo(() => {
+    if (!analysisMembers.length) return 0;
+    return Math.min(selectedAnalysisMemberIndex, analysisMembers.length - 1);
+  }, [analysisMembers, selectedAnalysisMemberIndex]);
+
   const selectedAnalysisMember =
-    analysisMembers[selectedAnalysisMemberIndex] || null;
+    analysisMembers[activeSelectedAnalysisMemberIndex] || null;
 
   const selectedAnalysisMemberPrimeForm = useMemo(() => {
     if (!selectedAnalysisMember) return [];
@@ -418,93 +398,234 @@ export default function GenericSetPage({
     analysisDegreeMap,
   ]);
 
-  const selectedAnalysisVoicing =
-    analysisFilteredVoicings[selectedAnalysisVoicingIndex] || null;
+  const activeSelectedAnalysisVoicingIndex = useMemo(() => {
+    if (!analysisFilteredVoicings.length) return 0;
+    return Math.min(
+      selectedAnalysisVoicingIndex,
+      analysisFilteredVoicings.length - 1
+    );
+  }, [analysisFilteredVoicings, selectedAnalysisVoicingIndex]);
 
-  const selectedVoicing = filteredVoicings[selected] || null;
+  const selectedAnalysisVoicing =
+    analysisFilteredVoicings[activeSelectedAnalysisVoicingIndex] || null;
+
+  const activeSelectedVoicingIndex = useMemo(() => {
+    if (!filteredVoicings.length) return 0;
+    return Math.min(selected, filteredVoicings.length - 1);
+  }, [filteredVoicings, selected]);
+
+  const selectedVoicing = filteredVoicings[activeSelectedVoicingIndex] || null;
 
   const availableGroupPatterns = useMemo(() => {
     const set = new Set(rawVoicings.map((v) => v.stringPattern));
     return [...set].sort();
   }, [rawVoicings]);
 
-  useEffect(() => {
+  const resetPrimaryVoicingSelection = ({ hideAll = true } = {}) => {
     setSelected(0);
-  }, [
-    selectedForte,
-    maxSpan,
-    excludeOpenStrings,
-    groupFilter,
-    bassFilter,
-    displayMode,
-    transformMode,
-    transformAmount,
-  ]);
-
-  useEffect(() => {
-    setSubsetTargetCardinality(noteCount > 3 ? noteCount - 1 : 3);
-    setSupersetTargetCardinality(noteCount < 12 ? noteCount + 1 : 12);
-  }, [selectedForte, noteCount]);
-
-  useEffect(() => {
-    if (analysisMode === "voicings" || !analysisClasses.length) {
-      setSelectedAnalysisClassKey(null);
-      return;
+    if (hideAll) {
+      setShowAll(false);
     }
+  };
 
-    const exists = analysisClasses.some(
-      (item) => getClassKey(item) === selectedAnalysisClassKey
-    );
-
-    if (!exists) {
-      setSelectedAnalysisClassKey(getClassKey(analysisClasses[0]));
-    }
-  }, [analysisMode, analysisClasses, selectedAnalysisClassKey]);
-
-  useEffect(() => {
-    if (!selectedAnalysisClass || !analysisMembers.length) {
-      setSelectedAnalysisMemberIndex(0);
-      setSelectedAnalysisVoicingIndex(0);
+  const resetAnalysisVoicingSelection = ({ hideAll = true } = {}) => {
+    setSelectedAnalysisVoicingIndex(0);
+    if (hideAll) {
       setAnalysisShowAllVoicings(false);
-      setAnalysisBassFilter("all");
-      return;
     }
+  };
 
-    const transformedTarget = transformPcs(
-      selectedAnalysisClass.primeForm,
-      transformMode,
-      transformAmount
-    );
+  const resetAnalysisClassSelection = ({
+    clearClass = false,
+    resetBass = true,
+    hideAll = true,
+  } = {}) => {
+    if (clearClass) {
+      setSelectedAnalysisClassKey(null);
+    }
+    setSelectedAnalysisMemberIndex(0);
+    if (resetBass) {
+      setAnalysisBassFilter("all");
+    }
+    resetAnalysisVoicingSelection({ hideAll });
+  };
 
-    const matchingIndex = analysisMembers.findIndex((member) =>
-      arePcArraysEqual(member, transformedTarget)
-    );
+  const handleTransformModeChange = (mode) => {
+    setTransformMode(mode);
+    resetPrimaryVoicingSelection();
+    resetAnalysisClassSelection();
+  };
 
-    setSelectedAnalysisMemberIndex(matchingIndex >= 0 ? matchingIndex : 0);
+  const handleTransformAmountChange = (amount) => {
+    setTransformAmount(amount);
+    resetPrimaryVoicingSelection();
+    resetAnalysisClassSelection();
+  };
+
+  const handleSelectedForteChange = (forte) => {
+    setSelectedForte(forte);
+    resetPrimaryVoicingSelection();
+    setShowComplement(false);
+    resetAnalysisClassSelection({ clearClass: true });
+  };
+
+  const handleMaxSpanChange = (span) => {
+    setMaxSpan(span);
+    setSelected(0);
     setSelectedAnalysisVoicingIndex(0);
-    setAnalysisShowAllVoicings(false);
+  };
+
+  const handleAnalysisModeChange = (mode) => {
+    setAnalysisMode(mode);
+    resetAnalysisClassSelection({ clearClass: true });
+  };
+
+  const handleSubsetTargetCardinalityChange = (cardinality) => {
+    setSubsetTargetCardinality(cardinality);
+    resetAnalysisClassSelection({ clearClass: true });
+  };
+
+  const handleSupersetTargetCardinalityChange = (cardinality) => {
+    setSupersetTargetCardinality(cardinality);
+    resetAnalysisClassSelection({ clearClass: true });
+  };
+
+  const handleGroupFilterChange = (pattern) => {
+    setGroupFilter(pattern);
+    setSelected(0);
+  };
+
+  const handleExcludeOpenStringsChange = (checked) => {
+    setExcludeOpenStrings(checked);
+    setSelected(0);
+    setSelectedAnalysisVoicingIndex(0);
+  };
+
+  const handleSelectVoicing = (index) => {
+    setSelected(index);
+    if (showAll) {
+      setShowAll(false);
+    }
+  };
+
+  const handleSelectAnalysisClass = (classKey) => {
+    setSelectedAnalysisClassKey(classKey);
+    setSelectedAnalysisMemberIndex(0);
     setAnalysisBassFilter("all");
-  }, [
-    selectedAnalysisClass,
-    analysisMembers,
-    transformMode,
-    transformAmount,
-  ]);
+    resetAnalysisVoicingSelection();
+  };
 
-  useEffect(() => {
-    setSelectedAnalysisVoicingIndex(0);
-    setAnalysisShowAllVoicings(false);
-  }, [selectedAnalysisMemberIndex]);
+  const handleAnalysisMemberIndexChange = (index) => {
+    setSelectedAnalysisMemberIndex(index);
+    resetAnalysisVoicingSelection();
+  };
 
-  useEffect(() => {
+  const handleAnalysisBassFilterChange = (value) => {
+    setAnalysisBassFilter(value);
     setSelectedAnalysisVoicingIndex(0);
-  }, [maxSpan, excludeOpenStrings, analysisBassFilter]);
+  };
+
+  const handleSelectAnalysisVoicing = (index) => {
+    setSelectedAnalysisVoicingIndex(index);
+    if (analysisShowAllVoicings) {
+      setAnalysisShowAllVoicings(false);
+    }
+  };
 
   const canRenderAnalysisVoicings =
     !!selectedAnalysisMember &&
     selectedAnalysisMember.length >= 3 &&
     selectedAnalysisMember.length <= 6 &&
     !!analysisVoicingFinder;
+
+  useEffect(() => {
+    replaceSearchParams((params) => {
+      setSearchParam(params, "forte", selectedForte);
+      setSearchParam(params, "span", maxSpan);
+      setSearchParam(params, "analysis", analysisMode);
+
+      setBooleanSearchParam(params, "showAll", showAll);
+      setBooleanSearchParam(params, "complement", showComplement);
+      setBooleanSearchParam(params, "excludeOpen", excludeOpenStrings);
+
+      setSearchParam(params, "subset", subsetTargetCardinality);
+      setSearchParam(params, "superset", supersetTargetCardinality);
+      setSearchParam(
+        params,
+        "group",
+        groupFilter === "all" ? null : groupFilter
+      );
+      setSearchParam(
+        params,
+        "view",
+        displayMode === "notes" ? null : displayMode
+      );
+      setSearchParam(params, "bass", bassFilter === "all" ? null : bassFilter);
+
+      setSearchParam(
+        params,
+        "transform",
+        transformMode === "base" ? null : transformMode
+      );
+      setSearchParam(
+        params,
+        "amount",
+        transformMode === "base" ? null : transformAmount
+      );
+      setSearchParam(params, "voicing", activeSelectedVoicingIndex || null);
+
+      if (analysisMode === "voicings") {
+        params.delete("aclass");
+        params.delete("amember");
+        params.delete("abass");
+        params.delete("aShowAll");
+        params.delete("avoicing");
+        return;
+      }
+
+      setSearchParam(
+        params,
+        "aclass",
+        selectedAnalysisClass ? getClassKey(selectedAnalysisClass) : null
+      );
+      setSearchParam(
+        params,
+        "amember",
+        activeSelectedAnalysisMemberIndex || null
+      );
+      setSearchParam(
+        params,
+        "abass",
+        analysisBassFilter === "all" ? null : analysisBassFilter
+      );
+      setBooleanSearchParam(params, "aShowAll", analysisShowAllVoicings);
+      setSearchParam(
+        params,
+        "avoicing",
+        activeSelectedAnalysisVoicingIndex || null
+      );
+    });
+  }, [
+    selectedForte,
+    maxSpan,
+    analysisMode,
+    showAll,
+    showComplement,
+    excludeOpenStrings,
+    subsetTargetCardinality,
+    supersetTargetCardinality,
+    groupFilter,
+    displayMode,
+    bassFilter,
+    transformMode,
+    transformAmount,
+    activeSelectedVoicingIndex,
+    selectedAnalysisClass,
+    activeSelectedAnalysisMemberIndex,
+    analysisBassFilter,
+    analysisShowAllVoicings,
+    activeSelectedAnalysisVoicingIndex,
+  ]);
 
   return (
     <div
@@ -516,362 +637,45 @@ export default function GenericSetPage({
       }}
     >
       <div style={{ maxWidth: "1500px", margin: "0 auto" }}>
-        <div
-          style={{
-            background: "white",
-            padding: "24px",
-            borderRadius: "18px",
-            marginBottom: "24px",
-            border: "1px solid #ddd",
-          }}
-        >
-          <h1 style={{ marginTop: 0 }}>{title}</h1>
-          <p>{description}</p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.4fr 0.8fr",
-              gap: "20px",
-              marginTop: "20px",
-            }}
-          >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "bold",
-                }}
-              >
-                {keyLabel}
-              </label>
-              <select
-                value={selectedForte}
-                onChange={(e) => {
-                  setSelectedForte(e.target.value);
-                  setSelected(0);
-                  setShowAll(false);
-                  setShowComplement(false);
-                }}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "12px",
-                  border: "1px solid #ccc",
-                  fontSize: "16px",
-                  background: "white",
-                }}
-              >
-                {sortedKeys.map((key) => (
-                  <option key={key} value={key}>
-                    {key} | PF ({dataMap[key].pf}) | IV {dataMap[key].iv}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "bold",
-                }}
-              >
-                Apertura massima: {maxSpan} tasti
-              </label>
-              <input
-                type="range"
-                min="2"
-                max="8"
-                step="1"
-                value={maxSpan}
-                onChange={(e) => {
-                  setMaxSpan(Number(e.target.value));
-                  setSelected(0);
-                }}
-                style={{ width: "100%" }}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: "16px",
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
-            }}
-          >
-            <PillButton
-              active={!showComplement}
-              onClick={() => setShowComplement(false)}
-            >
-              Mostra {noteName}
-            </PillButton>
-            <PillButton
-              active={showComplement}
-              onClick={() => setShowComplement(true)}
-            >
-              Mostra complementare
-            </PillButton>
-          </div>
-
-          {!showComplement && (
-            <>
-              <div style={{ marginTop: "16px" }}>
-                <SectionTitle>Analisi insiemistica</SectionTitle>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <PillButton
-                    active={analysisMode === "voicings"}
-                    onClick={() => setAnalysisMode("voicings")}
-                  >
-                    Voicing
-                  </PillButton>
-                  <PillButton
-                    active={analysisMode === "subsets"}
-                    onClick={() => setAnalysisMode("subsets")}
-                  >
-                    Subset-class
-                  </PillButton>
-                  <PillButton
-                    active={analysisMode === "supersets"}
-                    onClick={() => setAnalysisMode("supersets")}
-                  >
-                    Superset-class
-                  </PillButton>
-                </div>
-              </div>
-
-              {analysisMode === "subsets" &&
-                subsetCardinalityOptions.length > 0 && (
-                  <div style={{ marginTop: "16px" }}>
-                    <label
-                      style={{
-                        display: "block",
-                        marginBottom: "8px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      Tipo di subset
-                    </label>
-                    <select
-                      value={subsetTargetCardinality}
-                      onChange={(e) =>
-                        setSubsetTargetCardinality(Number(e.target.value))
-                      }
-                      style={{
-                        width: "100%",
-                        maxWidth: "280px",
-                        padding: "12px",
-                        borderRadius: "12px",
-                        border: "1px solid #ccc",
-                        fontSize: "16px",
-                        background: "white",
-                      }}
-                    >
-                      {subsetCardinalityOptions.map((n) => (
-                        <option key={n} value={n}>
-                          {getCardinalityLabel(n)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-              {analysisMode === "supersets" &&
-                supersetCardinalityOptions.length > 0 && (
-                  <div style={{ marginTop: "16px" }}>
-                    <label
-                      style={{
-                        display: "block",
-                        marginBottom: "8px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      Tipo di superset
-                    </label>
-                    <select
-                      value={supersetTargetCardinality}
-                      onChange={(e) =>
-                        setSupersetTargetCardinality(Number(e.target.value))
-                      }
-                      style={{
-                        width: "100%",
-                        maxWidth: "280px",
-                        padding: "12px",
-                        borderRadius: "12px",
-                        border: "1px solid #ccc",
-                        fontSize: "16px",
-                        background: "white",
-                      }}
-                    >
-                      {supersetCardinalityOptions.map((n) => (
-                        <option key={n} value={n}>
-                          {getCardinalityLabel(n)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-              {analysisMode === "voicings" ? (
-                <>
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: "14px",
-                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                      marginTop: "16px",
-                    }}
-                  >
-                    <div>
-                      <SectionTitle>Gruppo corde</SectionTitle>
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <PillButton
-                          active={groupFilter === "all"}
-                          onClick={() => setGroupFilter("all")}
-                        >
-                          Tutti
-                        </PillButton>
-                        {availableGroupPatterns.map((pattern) => (
-                          <PillButton
-                            key={pattern}
-                            active={groupFilter === pattern}
-                            onClick={() => setGroupFilter(pattern)}
-                          >
-                            {pattern}
-                          </PillButton>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <SectionTitle>Vista</SectionTitle>
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <PillButton
-                          active={displayMode === "notes"}
-                          onClick={() => setDisplayMode("notes")}
-                        >
-                          Note
-                        </PillButton>
-                        <PillButton
-                          active={displayMode === "degrees"}
-                          onClick={() => setDisplayMode("degrees")}
-                        >
-                          {degreeButtonLabel}
-                        </PillButton>
-                      </div>
-                    </div>
-
-                    <BassButtons
-                      noteCount={noteCount}
-                      value={bassFilter}
-                      onChange={setBassFilter}
-                    />
-
-                    <TransformButtons
-                      mode={transformMode}
-                      setMode={(m) => {
-                        setTransformMode(m);
-                        setSelected(0);
-                        setShowAll(false);
-                      }}
-                      amount={transformAmount}
-                      setAmount={(n) => {
-                        setTransformAmount(n);
-                        setSelected(0);
-                        setShowAll(false);
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
-                    <label
-                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={showAll}
-                        onChange={(e) => setShowAll(e.target.checked)}
-                      />
-                      Mostra tutte le forme insieme sul manico
-                    </label>
-
-                    <label
-                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={excludeOpenStrings}
-                        onChange={(e) => setExcludeOpenStrings(e.target.checked)}
-                      />
-                      Escludi corde vuote
-                    </label>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: "14px",
-                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                      marginTop: "16px",
-                    }}
-                  >
-                    <div>
-                      <SectionTitle>Vista</SectionTitle>
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <PillButton
-                          active={displayMode === "notes"}
-                          onClick={() => setDisplayMode("notes")}
-                        >
-                          Note
-                        </PillButton>
-                        <PillButton
-                          active={displayMode === "degrees"}
-                          onClick={() => setDisplayMode("degrees")}
-                        >
-                          {degreeButtonLabel}
-                        </PillButton>
-                      </div>
-                    </div>
-
-                    <TransformButtons
-                      mode={transformMode}
-                      setMode={(m) => {
-                        setTransformMode(m);
-                        setSelected(0);
-                        setShowAll(false);
-                      }}
-                      amount={transformAmount}
-                      setAmount={(n) => {
-                        setTransformAmount(n);
-                        setSelected(0);
-                        setShowAll(false);
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
-                    <label
-                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={excludeOpenStrings}
-                        onChange={(e) => setExcludeOpenStrings(e.target.checked)}
-                      />
-                      Escludi corde vuote
-                    </label>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
+        <GenericSetControlsPanel
+          title={title}
+          description={description}
+          keyLabel={keyLabel}
+          sortedKeys={sortedKeys}
+          dataMap={dataMap}
+          selectedForte={selectedForte}
+          onSelectedForteChange={handleSelectedForteChange}
+          maxSpan={maxSpan}
+          onMaxSpanChange={handleMaxSpanChange}
+          showComplement={showComplement}
+          noteName={noteName}
+          onShowComplementChange={setShowComplement}
+          analysisMode={analysisMode}
+          onAnalysisModeChange={handleAnalysisModeChange}
+          subsetCardinalityOptions={subsetCardinalityOptions}
+          subsetTargetCardinality={subsetTargetCardinality}
+          onSubsetTargetCardinalityChange={handleSubsetTargetCardinalityChange}
+          supersetCardinalityOptions={supersetCardinalityOptions}
+          supersetTargetCardinality={supersetTargetCardinality}
+          onSupersetTargetCardinalityChange={handleSupersetTargetCardinalityChange}
+          groupFilter={groupFilter}
+          availableGroupPatterns={availableGroupPatterns}
+          onGroupFilterChange={handleGroupFilterChange}
+          displayMode={displayMode}
+          onDisplayModeChange={setDisplayMode}
+          degreeButtonLabel={degreeButtonLabel}
+          noteCount={noteCount}
+          bassFilter={bassFilter}
+          onBassFilterChange={setBassFilter}
+          transformMode={transformMode}
+          transformAmount={transformAmount}
+          onTransformModeChange={handleTransformModeChange}
+          onTransformAmountChange={handleTransformAmountChange}
+          showAll={showAll}
+          onShowAllChange={setShowAll}
+          excludeOpenStrings={excludeOpenStrings}
+          onExcludeOpenStringsChange={handleExcludeOpenStringsChange}
+        />
 
         <div
           style={{
@@ -880,527 +684,58 @@ export default function GenericSetPage({
             gap: "24px",
           }}
         >
-          <div
-            style={{
-              background: "white",
-              padding: "24px",
-              borderRadius: "18px",
-              border: "1px solid #ddd",
-            }}
-          >
-            <h2>Manico</h2>
+          <GenericSetFretboardPanel
+            showComplement={showComplement}
+            analysisMode={analysisMode}
+            noteName={noteName}
+            activeSet={activeSet}
+            selectedVoicing={selectedVoicing}
+            filteredVoicings={filteredVoicings}
+            showAll={showAll}
+            displayMode={displayMode}
+            selectedAnalysisClass={selectedAnalysisClass}
+            selectedAnalysisMember={selectedAnalysisMember}
+            canRenderAnalysisVoicings={canRenderAnalysisVoicings}
+            selectedAnalysisVoicing={selectedAnalysisVoicing}
+            analysisFilteredVoicings={analysisFilteredVoicings}
+            analysisShowAllVoicings={analysisShowAllVoicings}
+            analysisDegreeMap={analysisDegreeMap}
+            complementData={complementData}
+          />
 
-            {!showComplement ? (
-              analysisMode === "voicings" ? (
-                <>
-                  <p style={{ color: "#666" }}>
-                    Le caselle grigie appartengono al {noteName} trasformato. Le
-                    caselle nere mostrano la forma selezionata, oppure tutte le
-                    forme se l’opzione è attiva.
-                  </p>
-
-                  {activeSet && (
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        color: "#555",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Trasformazione attiva: {activeSet.transformLabel}
-                    </div>
-                  )}
-
-                  {activeSet && (
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        color: "#555",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Prime form del {noteName}: [{activeSet.primeForm.join(",")}]
-                      {" | "}trasformata ordinata: [
-                      {activeSet.transformedPrimeForm.join(",")}]
-                    </div>
-                  )}
-
-                  {activeSet && (
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        color: "#555",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Nome Forte del {noteName}: {activeSet.forteName}
-                    </div>
-                  )}
-
-                  <Fretboard
-                    voicing={selectedVoicing}
-                    allTargetPcs={activeSet ? activeSet.pcs : []}
-                    allVoicings={filteredVoicings}
-                    showAll={showAll}
-                    displayMode={displayMode}
-                    degreeMap={activeSet?.degreeMap}
-                  />
-                </>
-              ) : (
-                <>
-                  <p style={{ color: "#666" }}>
-                    Seleziona una classe a destra. Il manico mostrerà la singola
-                    occorrenza concreta selezionata e, quando possibile, i suoi
-                    voicing/rivolti.
-                  </p>
-
-                  {selectedAnalysisClass && (
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        color: "#555",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Classe selezionata: {selectedAnalysisClass.forteName || "n.d."}
-                      {" | "}PF [{selectedAnalysisClass.primeForm.join(",")}]
-                    </div>
-                  )}
-
-                  {selectedAnalysisMember && (
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        color: "#555",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Occorrenza concreta: [{selectedAnalysisMember.join(",")}]
-                    </div>
-                  )}
-
-                  {selectedAnalysisMember && !canRenderAnalysisVoicings && (
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        color: "#555",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Cardinalità {selectedAnalysisMember.length}: sul manico
-                      vengono mostrate le pitch classes dell’occorrenza, non un
-                      voicing simultaneo.
-                    </div>
-                  )}
-
-                  <Fretboard
-                    voicing={
-                      canRenderAnalysisVoicings ? selectedAnalysisVoicing : null
-                    }
-                    allTargetPcs={selectedAnalysisMember || []}
-                    allVoicings={
-                      canRenderAnalysisVoicings ? analysisFilteredVoicings : []
-                    }
-                    showAll={
-                      canRenderAnalysisVoicings ? analysisShowAllVoicings : false
-                    }
-                    displayMode={displayMode}
-                    degreeMap={analysisDegreeMap}
-                  />
-                </>
-              )
-            ) : (
-              <>
-                <p style={{ color: "#666" }}>
-                  Le caselle nere mostrano il complementare della trasformazione
-                  attiva del {noteName}.
-                </p>
-                <Fretboard
-                  voicing={null}
-                  allTargetPcs={complementData ? complementData.pcs : []}
-                  allVoicings={[]}
-                  showAll={false}
-                  displayMode="notes"
-                  degreeMap={null}
-                  highlightAllAsActive={true}
-                />
-              </>
-            )}
-          </div>
-
-          <div
-            style={{
-              background: "white",
-              padding: "24px",
-              borderRadius: "18px",
-              border: "1px solid #ddd",
-            }}
-          >
-            {!showComplement ? (
-              analysisMode === "voicings" ? (
-                <>
-                  <h2>Possibilità trovate</h2>
-                  <p style={{ color: "#666" }}>
-                    {filteredVoicings.length} forme complessive per il {noteName}{" "}
-                    selezionato.
-                  </p>
-
-                  <div
-                    style={{
-                      maxHeight: "760px",
-                      overflowY: "auto",
-                      marginTop: "16px",
-                    }}
-                  >
-                    {filteredVoicings.map((v, i) => (
-                      <VoicingCard
-                        key={`${selectedForte}-${i}-${v.positions
-                          .map((p) => `${p.stringIndex}-${p.fret}`)
-                          .join("-")}`}
-                        voicing={v}
-                        index={i}
-                        selected={i === selected}
-                        onSelect={() => {
-                          setSelected(i);
-                          if (showAll) setShowAll(false);
-                        }}
-                        displayMode={displayMode}
-                        showPrimeForm={true}
-                        showForte={true}
-                        degreeMap={activeSet?.degreeMap}
-                      />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h2>
-                    {analysisMode === "subsets" ? "Subset-class" : "Superset-class"}
-                  </h2>
-
-                  <p style={{ color: "#666" }}>
-                    {analysisClasses.length} classi trovate in{" "}
-                    {getCardinalityLabel(
-                      analysisMode === "subsets"
-                        ? subsetTargetCardinality
-                        : supersetTargetCardinality
-                    ).toLowerCase()}
-                    .
-                  </p>
-
-                  <div
-                    style={{
-                      maxHeight: "280px",
-                      overflowY: "auto",
-                      marginTop: "16px",
-                    }}
-                  >
-                    {analysisClasses.map((item) => (
-                      <ClassResultRow
-                        key={`${analysisMode}-${getClassKey(item)}`}
-                        item={item}
-                        active={
-                          getClassKey(item) ===
-                          getClassKey(selectedAnalysisClass || item)
-                        }
-                        onClick={() => setSelectedAnalysisClassKey(getClassKey(item))}
-                      />
-                    ))}
-                  </div>
-
-                  {selectedAnalysisClass && (
-                    <div
-                      style={{
-                        marginTop: "18px",
-                        padding: "14px",
-                        borderRadius: "14px",
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                      }}
-                    >
-                      <div style={{ fontWeight: "bold", marginBottom: "12px" }}>
-                        Dettaglio classe
-                      </div>
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                          gap: "10px",
-                        }}
-                      >
-                        <DetailChip
-                          label="Classe"
-                          value={selectedAnalysisClass.forteName || "n.d."}
-                        />
-                        <DetailChip
-                          label="Prime form"
-                          value={`[${selectedAnalysisClass.primeForm.join(",")}]`}
-                        />
-                        <DetailChip
-                          label="Occorrenze"
-                          value={String(selectedAnalysisClass.concreteCount)}
-                        />
-                      </div>
-
-                      {analysisMembers.length > 0 && (
-                        <div style={{ marginTop: "14px" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "10px",
-                              marginBottom: "8px",
-                            }}
-                          >
-                            <label style={{ fontWeight: "bold" }}>
-                              Occorrenza concreta
-                            </label>
-                            <ClassBadge>
-                              {selectedAnalysisMemberIndex + 1} / {analysisMembers.length}
-                            </ClassBadge>
-                          </div>
-
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "auto 1fr auto",
-                              gap: "8px",
-                              alignItems: "center",
-                            }}
-                          >
-                            <button
-                              onClick={() =>
-                                setSelectedAnalysisMemberIndex((prev) =>
-                                  Math.max(0, prev - 1)
-                                )
-                              }
-                              disabled={selectedAnalysisMemberIndex === 0}
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: "10px",
-                                border: "1px solid #ccc",
-                                background:
-                                  selectedAnalysisMemberIndex === 0 ? "#f8fafc" : "white",
-                                cursor:
-                                  selectedAnalysisMemberIndex === 0
-                                    ? "not-allowed"
-                                    : "pointer",
-                              }}
-                            >
-                              ←
-                            </button>
-
-                            <select
-                              value={selectedAnalysisMemberIndex}
-                              onChange={(e) =>
-                                setSelectedAnalysisMemberIndex(Number(e.target.value))
-                              }
-                              style={{
-                                width: "100%",
-                                padding: "12px",
-                                borderRadius: "12px",
-                                border: "1px solid #ccc",
-                                fontSize: "15px",
-                                background: "white",
-                              }}
-                            >
-                              {analysisMembers.map((member, i) => (
-                                <option
-                                  key={`${getClassKey(selectedAnalysisClass)}-${i}`}
-                                  value={i}
-                                >
-                                  Occorrenza {i + 1} — [{member.join(",")}]
-                                </option>
-                              ))}
-                            </select>
-
-                            <button
-                              onClick={() =>
-                                setSelectedAnalysisMemberIndex((prev) =>
-                                  Math.min(analysisMembers.length - 1, prev + 1)
-                                )
-                              }
-                              disabled={
-                                selectedAnalysisMemberIndex === analysisMembers.length - 1
-                              }
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: "10px",
-                                border: "1px solid #ccc",
-                                background:
-                                  selectedAnalysisMemberIndex === analysisMembers.length - 1
-                                    ? "#f8fafc"
-                                    : "white",
-                                cursor:
-                                  selectedAnalysisMemberIndex === analysisMembers.length - 1
-                                    ? "not-allowed"
-                                    : "pointer",
-                              }}
-                            >
-                              →
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {canRenderAnalysisVoicings ? (
-                        <>
-                          <div style={{ marginTop: "16px" }}>
-                            <BassButtons
-                              noteCount={selectedAnalysisMember.length}
-                              value={analysisBassFilter}
-                              onChange={setAnalysisBassFilter}
-                            />
-                          </div>
-
-                          <div
-                            style={{
-                              marginTop: "14px",
-                              display: "grid",
-                              gap: "10px",
-                            }}
-                          >
-                            <label
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={analysisShowAllVoicings}
-                                onChange={(e) =>
-                                  setAnalysisShowAllVoicings(e.target.checked)
-                                }
-                              />
-                              Mostra tutte le forme di questa occorrenza sul manico
-                            </label>
-                          </div>
-
-                          <div style={{ marginTop: "14px" }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: "10px",
-                                marginBottom: "8px",
-                              }}
-                            >
-                              <div style={{ fontWeight: "bold" }}>
-                                Voicing / rivolti dell’occorrenza
-                              </div>
-                              <ClassBadge>{analysisFilteredVoicings.length}</ClassBadge>
-                            </div>
-
-                            <div
-                              style={{
-                                maxHeight: "260px",
-                                overflowY: "auto",
-                              }}
-                            >
-                              {analysisFilteredVoicings.map((v, i) => (
-                                <VoicingCard
-                                  key={`${analysisMode}-${getClassKey(
-                                    selectedAnalysisClass
-                                  )}-${selectedAnalysisMemberIndex}-${i}-${v.positions
-                                    .map((p) => `${p.stringIndex}-${p.fret}`)
-                                    .join("-")}`}
-                                  voicing={v}
-                                  index={i}
-                                  selected={i === selectedAnalysisVoicingIndex}
-                                  onSelect={() => {
-                                    setSelectedAnalysisVoicingIndex(i);
-                                    if (analysisShowAllVoicings) {
-                                      setAnalysisShowAllVoicings(false);
-                                    }
-                                  }}
-                                  displayMode={displayMode}
-                                  showPrimeForm={true}
-                                  showForte={true}
-                                  degreeMap={analysisDegreeMap}
-                                />
-                              ))}
-
-                              {analysisFilteredVoicings.length === 0 && (
-                                <p style={{ color: "#666", marginTop: "8px" }}>
-                                  Nessun voicing disponibile con i filtri correnti.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <p style={{ color: "#666", marginTop: "14px" }}>
-                          Per questa occorrenza non vengono mostrati rivolti/voicing
-                          simultanei. Sul manico vedi comunque l’insieme delle pitch
-                          classes dell’occorrenza selezionata.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </>
-              )
-            ) : (
-              <>
-                <h2>Dettagli analitici</h2>
-
-                {activeSet && complementData && (
-                  <div style={{ marginTop: "12px", lineHeight: 1.8 }}>
-                    <div>
-                      <strong>
-                        {noteName.charAt(0).toUpperCase() + noteName.slice(1)} di
-                        partenza:
-                      </strong>{" "}
-                      {activeSet.forteName}
-                    </div>
-                    <div>
-                      <strong>Trasformazione attiva:</strong>{" "}
-                      {activeSet.transformLabel}
-                    </div>
-                    <div>
-                      <strong>Prime form:</strong> ({activeSet.pf})
-                    </div>
-                    <div>
-                      <strong>Vettore intervallare:</strong> ⟨
-                      {activeSet.iv.split("").join(",")}⟩
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: "18px",
-                        padding: "12px",
-                        borderRadius: "12px",
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                      }}
-                    >
-                      <div>
-                        <strong>{complementName}:</strong>{" "}
-                        {complementData.forte}
-                      </div>
-                      <div>
-                        <strong>Prime form:</strong> ({complementData.pf})
-                      </div>
-                      <div>
-                        <strong>Vettore intervallare:</strong> ⟨
-                        {complementData.iv.split("").join(",")}⟩
-                      </div>
-                      <div>
-                        <strong>Pitch classes:</strong>{" "}
-                        {complementData.pcs
-                          .map((pc) => PC_TO_NAME[pc])
-                          .join(" – ")}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          <GenericSetResultsPanel
+            showComplement={showComplement}
+            analysisMode={analysisMode}
+            filteredVoicings={filteredVoicings}
+            noteName={noteName}
+            selectedForte={selectedForte}
+            activeSelectedVoicingIndex={activeSelectedVoicingIndex}
+            onSelectVoicing={handleSelectVoicing}
+            displayMode={displayMode}
+            activeSet={activeSet}
+            analysisClasses={analysisClasses}
+            subsetTargetCardinality={subsetTargetCardinality}
+            supersetTargetCardinality={supersetTargetCardinality}
+            selectedAnalysisClass={selectedAnalysisClass}
+            onSelectAnalysisClass={handleSelectAnalysisClass}
+            analysisMembers={analysisMembers}
+            activeSelectedAnalysisMemberIndex={activeSelectedAnalysisMemberIndex}
+            onAnalysisMemberIndexChange={handleAnalysisMemberIndexChange}
+            canRenderAnalysisVoicings={canRenderAnalysisVoicings}
+            selectedAnalysisMember={selectedAnalysisMember}
+            analysisBassFilter={analysisBassFilter}
+            onAnalysisBassFilterChange={handleAnalysisBassFilterChange}
+            analysisShowAllVoicings={analysisShowAllVoicings}
+            onAnalysisShowAllVoicingsChange={setAnalysisShowAllVoicings}
+            analysisFilteredVoicings={analysisFilteredVoicings}
+            activeSelectedAnalysisVoicingIndex={
+              activeSelectedAnalysisVoicingIndex
+            }
+            onSelectAnalysisVoicing={handleSelectAnalysisVoicing}
+            analysisDegreeMap={analysisDegreeMap}
+            complementName={complementName}
+            complementData={complementData}
+          />
         </div>
       </div>
     </div>
