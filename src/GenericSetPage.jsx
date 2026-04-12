@@ -34,6 +34,7 @@ import {
 const ANALYSIS_MODES = ["voicings", "subsets", "supersets"];
 const DISPLAY_MODES = ["notes", "degrees"];
 const TRANSFORM_MODES = ["base", "tn", "tni"];
+const BROWSE_MODES = ["forte", "iv"];
 
 function readBassFilter(params, name, noteCount) {
   const value = params.get(name);
@@ -47,11 +48,28 @@ function readBassFilter(params, name, noteCount) {
   return parsed;
 }
 
-function buildInitialUrlState(keys, noteCount) {
+function buildIntervalVectorOptions(keys, dataMap) {
+  return [...new Set(keys.map((key) => dataMap[key]?.iv).filter(Boolean))].sort(
+    (first, second) => first.localeCompare(second)
+  );
+}
+
+function buildInitialUrlState(keys, dataMap, noteCount) {
   const params = getCurrentSearchParams();
+  const selectedForte = readStringParam(params, "forte", keys[0], keys);
+  const intervalVectorOptions = buildIntervalVectorOptions(keys, dataMap);
+  const defaultIntervalVector =
+    dataMap[selectedForte]?.iv || intervalVectorOptions[0] || "";
 
   return {
-    selectedForte: readStringParam(params, "forte", keys[0], keys),
+    browseMode: readEnumParam(params, "browse", BROWSE_MODES, "forte"),
+    selectedForte,
+    selectedIntervalVector: readStringParam(
+      params,
+      "iv",
+      defaultIntervalVector,
+      intervalVectorOptions
+    ),
     maxSpan: readIntegerParam(params, "span", DEFAULT_MAX_SPAN, {
       min: 2,
       max: 8,
@@ -113,9 +131,13 @@ export default function GenericSetPage({
   degreeButtonLabel,
   noteCount,
 }) {
-  const initialUrlState = buildInitialUrlState(keys, noteCount);
+  const initialUrlState = buildInitialUrlState(keys, dataMap, noteCount);
 
+  const [browseMode, setBrowseMode] = useState(initialUrlState.browseMode);
   const [selectedForte, setSelectedForte] = useState(initialUrlState.selectedForte);
+  const [selectedIntervalVector, setSelectedIntervalVector] = useState(
+    initialUrlState.selectedIntervalVector
+  );
   const [maxSpan, setMaxSpan] = useState(initialUrlState.maxSpan);
   const [selected, setSelected] = useState(initialUrlState.selected);
   const [showAll, setShowAll] = useState(initialUrlState.showAll);
@@ -201,6 +223,45 @@ export default function GenericSetPage({
     });
   }, [keys]);
 
+  const intervalVectorOptions = useMemo(
+    () => buildIntervalVectorOptions(sortedKeys, dataMap),
+    [sortedKeys, dataMap]
+  );
+
+  const intervalVectorMap = useMemo(() => {
+    const map = new Map();
+
+    sortedKeys.forEach((key) => {
+      const intervalVector = dataMap[key]?.iv;
+      if (!intervalVector) return;
+
+      if (!map.has(intervalVector)) {
+        map.set(intervalVector, []);
+      }
+
+      map.get(intervalVector).push(key);
+    });
+
+    return map;
+  }, [sortedKeys, dataMap]);
+
+  const intervalVectorMatches = useMemo(
+    () => intervalVectorMap.get(selectedIntervalVector) || [],
+    [intervalVectorMap, selectedIntervalVector]
+  );
+
+  const activeSelectedForte = useMemo(() => {
+    if (browseMode === "iv") {
+      if (intervalVectorMatches.includes(selectedForte)) {
+        return selectedForte;
+      }
+
+      return intervalVectorMatches[0] || selectedForte || sortedKeys[0];
+    }
+
+    return selectedForte;
+  }, [browseMode, intervalVectorMatches, selectedForte, sortedKeys]);
+
   const subsetCardinalityOptions = useMemo(() => {
     const options = [];
     for (let cardinality = 3; cardinality <= noteCount - 1; cardinality += 1) {
@@ -217,7 +278,7 @@ export default function GenericSetPage({
     return options;
   }, [noteCount]);
 
-  const setDataRaw = dataMap[selectedForte] || null;
+  const setDataRaw = dataMap[activeSelectedForte] || null;
 
   const activeSet = useMemo(() => {
     if (!setDataRaw) return null;
@@ -241,12 +302,12 @@ export default function GenericSetPage({
       primeForm: basePcs,
       transformedPrimeForm,
       degreeMap,
-      forteName: selectedForte,
+      forteName: activeSelectedForte,
       pf: setDataRaw.pf,
       iv: setDataRaw.iv,
       transformLabel: getTransformLabel(transformMode, transformAmount),
     };
-  }, [setDataRaw, selectedForte, transformMode, transformAmount]);
+  }, [setDataRaw, activeSelectedForte, transformMode, transformAmount]);
 
   const complementData = useMemo(() => {
     if (!activeSet) return null;
@@ -470,8 +531,44 @@ export default function GenericSetPage({
     resetAnalysisClassSelection();
   };
 
+  const handleBrowseModeChange = (mode) => {
+    setBrowseMode(mode);
+
+    if (mode === "iv") {
+      const nextIntervalVector =
+        dataMap[activeSelectedForte]?.iv || selectedIntervalVector;
+      const matchingKeys = intervalVectorMap.get(nextIntervalVector) || [];
+
+      setSelectedIntervalVector(nextIntervalVector);
+
+      if (matchingKeys.length) {
+        setSelectedForte(matchingKeys[0]);
+      }
+    }
+
+    resetPrimaryVoicingSelection();
+    resetAnalysisClassSelection({ clearClass: true });
+  };
+
   const handleSelectedForteChange = (forte) => {
     setSelectedForte(forte);
+    if (dataMap[forte]?.iv) {
+      setSelectedIntervalVector(dataMap[forte].iv);
+    }
+    resetPrimaryVoicingSelection();
+    setShowComplement(false);
+    resetAnalysisClassSelection({ clearClass: true });
+  };
+
+  const handleSelectedIntervalVectorChange = (intervalVector) => {
+    const matchingKeys = intervalVectorMap.get(intervalVector) || [];
+
+    setSelectedIntervalVector(intervalVector);
+
+    if (matchingKeys.length) {
+      setSelectedForte(matchingKeys[0]);
+    }
+
     resetPrimaryVoicingSelection();
     setShowComplement(false);
     resetAnalysisClassSelection({ clearClass: true });
@@ -574,7 +671,13 @@ export default function GenericSetPage({
 
   useEffect(() => {
     replaceSearchParams((params) => {
-      setSearchParam(params, "forte", selectedForte);
+      setSearchParam(params, "browse", browseMode === "forte" ? null : browseMode);
+      setSearchParam(params, "forte", activeSelectedForte);
+      setSearchParam(
+        params,
+        "iv",
+        browseMode === "iv" ? selectedIntervalVector : null
+      );
       setSearchParam(params, "span", maxSpan);
       setSearchParam(params, "analysis", analysisMode);
 
@@ -624,7 +727,9 @@ export default function GenericSetPage({
       );
     });
   }, [
-    selectedForte,
+    browseMode,
+    activeSelectedForte,
+    selectedIntervalVector,
     maxSpan,
     analysisMode,
     showAll,
@@ -652,12 +757,18 @@ export default function GenericSetPage({
           title={title}
           description={description}
           keyLabel={keyLabel}
+          browseMode={browseMode}
           copyLinkStatus={copyLinkStatus}
           onCopyLink={handleCopyLink}
+          onBrowseModeChange={handleBrowseModeChange}
           sortedKeys={sortedKeys}
           dataMap={dataMap}
-          selectedForte={selectedForte}
+          selectedForte={activeSelectedForte}
           onSelectedForteChange={handleSelectedForteChange}
+          selectedIntervalVector={selectedIntervalVector}
+          onSelectedIntervalVectorChange={handleSelectedIntervalVectorChange}
+          intervalVectorOptions={intervalVectorOptions}
+          intervalVectorMatches={intervalVectorMatches}
           maxSpan={maxSpan}
           onMaxSpanChange={handleMaxSpanChange}
           showComplement={showComplement}
@@ -715,7 +826,7 @@ export default function GenericSetPage({
             analysisMode={analysisMode}
             filteredVoicings={filteredVoicings}
             noteName={noteName}
-            selectedForte={selectedForte}
+            selectedForte={activeSelectedForte}
             activeSelectedVoicingIndex={activeSelectedVoicingIndex}
             onSelectVoicing={handleSelectVoicing}
             displayMode={displayMode}

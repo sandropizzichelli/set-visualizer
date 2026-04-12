@@ -13,6 +13,10 @@ function getAnalysisLabel(analysisMode) {
   return "Voicing";
 }
 
+function formatIntervalVector(intervalVector) {
+  return `⟨${intervalVector.split("").join(",")}⟩`;
+}
+
 function getCopyLinkLabel(copyLinkStatus) {
   if (copyLinkStatus === "copied") return "Link copiato";
   if (copyLinkStatus === "error") return "Riprova a copiare";
@@ -23,12 +27,18 @@ export default function GenericSetControlsPanel({
   title,
   description,
   keyLabel,
+  browseMode,
   copyLinkStatus,
   onCopyLink,
+  onBrowseModeChange,
   sortedKeys,
   dataMap,
   selectedForte,
   onSelectedForteChange,
+  selectedIntervalVector,
+  onSelectedIntervalVectorChange,
+  intervalVectorOptions,
+  intervalVectorMatches,
   maxSpan,
   onMaxSpanChange,
   showComplement,
@@ -76,6 +86,10 @@ export default function GenericSetControlsPanel({
               <strong>{getCardinalityLabel(noteCount)}</strong>
             </div>
             <div className="hero-stat">
+              <span>Accesso</span>
+              <strong>{browseMode === "forte" ? "Set-class" : "Interval vector"}</strong>
+            </div>
+            <div className="hero-stat">
               <span>Vista attiva</span>
               <strong>{showComplement ? "Complementare" : noteName}</strong>
             </div>
@@ -102,7 +116,7 @@ export default function GenericSetControlsPanel({
               {getCopyLinkLabel(copyLinkStatus)}
             </button>
             <p className="hero-actions__hint">
-              Il link mantiene pagina, set, trasformazioni e filtri correnti.
+              Il link mantiene pagina, modalità, classe, trasformazioni e filtri correnti.
             </p>
           </div>
         </div>
@@ -110,19 +124,84 @@ export default function GenericSetControlsPanel({
 
       <div className="control-grid">
         <div className="control-card control-card--wide">
-          <label className="control-label">{keyLabel}</label>
-          <select
-            value={selectedForte}
-            onChange={(event) => onSelectedForteChange(event.target.value)}
-            className="control-select"
-          >
-            {sortedKeys.map((key) => (
-              <option key={key} value={key}>
-                {key} | PF ({dataMap[key].pf}) | IV {dataMap[key].iv}
-              </option>
-            ))}
-          </select>
+          <div className="control-card__stack">
+            <SectionTitle>Chiave di accesso</SectionTitle>
+            <div className="segmented-row">
+              <PillButton
+                active={browseMode === "forte"}
+                onClick={() => onBrowseModeChange("forte")}
+              >
+                Per set-class
+              </PillButton>
+              <PillButton
+                active={browseMode === "iv"}
+                onClick={() => onBrowseModeChange("iv")}
+              >
+                Per interval vector
+              </PillButton>
+            </div>
+          </div>
         </div>
+
+        {browseMode === "forte" ? (
+          <div className="control-card control-card--wide">
+            <label className="control-label">{keyLabel}</label>
+            <select
+              value={selectedForte}
+              onChange={(event) => onSelectedForteChange(event.target.value)}
+              className="control-select"
+            >
+              {sortedKeys.map((key) => (
+                <option key={key} value={key}>
+                  {key} | PF ({dataMap[key].pf}) | IV {dataMap[key].iv}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <>
+            <div className="control-card control-card--wide">
+              <label className="control-label">Interval vector</label>
+              <select
+                value={selectedIntervalVector}
+                onChange={(event) =>
+                  onSelectedIntervalVectorChange(event.target.value)
+                }
+                className="control-select"
+              >
+                {intervalVectorOptions.map((intervalVector) => (
+                  <option key={intervalVector} value={intervalVector}>
+                    {formatIntervalVector(intervalVector)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="control-card control-card--wide">
+              <div className="control-card__stack">
+                <div>
+                  <label className="control-label">Classe compatibile</label>
+                  <select
+                    value={selectedForte}
+                    onChange={(event) => onSelectedForteChange(event.target.value)}
+                    className="control-select"
+                  >
+                    {intervalVectorMatches.map((key) => (
+                      <option key={key} value={key}>
+                        {key} | PF ({dataMap[key].pf})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <p className="helper-text">
+                  {intervalVectorMatches.length} classi condividono{" "}
+                  {formatIntervalVector(selectedIntervalVector)} in questa cardinalità.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="control-card">
           <div className="range-caption">
