@@ -310,6 +310,11 @@ code,
   gap: 12px;
 }
 
+.hero-side {
+  display: grid;
+  gap: 14px;
+}
+
 .hero-stat {
   padding: 16px 18px;
   border-radius: 22px;
@@ -332,6 +337,58 @@ code,
   margin-top: 7px;
   font-size: 1.05rem;
   color: var(--text-strong);
+}
+
+.hero-actions {
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.hero-actions__hint {
+  margin-top: 10px;
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(28, 108, 100, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(28, 108, 100, 0.12), rgba(255, 255, 255, 0.68));
+  color: var(--text-strong);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.secondary-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(28, 108, 100, 0.32);
+  box-shadow: 0 12px 24px rgba(28, 108, 100, 0.12);
+}
+
+.secondary-button--success {
+  border-color: rgba(28, 108, 100, 0.3);
+  background: linear-gradient(135deg, rgba(28, 108, 100, 0.22), rgba(255, 255, 255, 0.76));
+}
+
+.secondary-button--error {
+  border-color: rgba(184, 103, 48, 0.32);
+  background: linear-gradient(135deg, rgba(184, 103, 48, 0.18), rgba(255, 255, 255, 0.8));
 }
 
 .control-grid {
@@ -810,6 +867,10 @@ code,
     grid-template-columns: 1fr;
   }
 
+  .control-card {
+    grid-column: 1 / -1;
+  }
+
   .page-switcher {
     width: min(calc(100% - 20px), 920px);
   }
@@ -832,11 +893,13 @@ code,
   }
 
   .page-switcher__actions {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
   }
 
   .page-switcher__actions .pill-button {
-    flex: 1 1 140px;
+    width: 100%;
   }
 
   .set-page {
@@ -860,6 +923,18 @@ code,
     grid-template-columns: 1fr;
   }
 
+  .results-scroll {
+    max-height: 460px;
+  }
+
+  .results-scroll--short {
+    max-height: 240px;
+  }
+
+  .results-scroll--compact {
+    max-height: 300px;
+  }
+
   .fretboard-board {
     padding: 14px;
     border-radius: 24px;
@@ -878,5 +953,20 @@ code,
     height: 38px;
     border-radius: 12px;
     font-size: 0.76rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-switcher__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .set-page {
+    padding-top: 222px;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

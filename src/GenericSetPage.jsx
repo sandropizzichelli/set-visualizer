@@ -157,6 +157,17 @@ export default function GenericSetPage({
   const [analysisBassFilter, setAnalysisBassFilter] = useState(
     initialUrlState.analysisBassFilter
   );
+  const [copyLinkStatus, setCopyLinkStatus] = useState("idle");
+
+  useEffect(() => {
+    if (copyLinkStatus === "idle") return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setCopyLinkStatus("idle");
+    }, 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [copyLinkStatus]);
 
   const sortedKeys = useMemo(() => {
     return [...keys].sort((a, b) => {
@@ -529,6 +540,32 @@ export default function GenericSetPage({
     }
   };
 
+  const handleCopyLink = async () => {
+    if (typeof window === "undefined") return;
+
+    const url = window.location.href;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const tempTextarea = document.createElement("textarea");
+        tempTextarea.value = url;
+        tempTextarea.setAttribute("readonly", "");
+        tempTextarea.style.position = "absolute";
+        tempTextarea.style.left = "-9999px";
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextarea);
+      }
+
+      setCopyLinkStatus("copied");
+    } catch {
+      setCopyLinkStatus("error");
+    }
+  };
+
   const canRenderAnalysisVoicings =
     Boolean(selectedAnalysisMember) &&
     selectedAnalysisMember.length >= 3 &&
@@ -615,6 +652,8 @@ export default function GenericSetPage({
           title={title}
           description={description}
           keyLabel={keyLabel}
+          copyLinkStatus={copyLinkStatus}
+          onCopyLink={handleCopyLink}
           sortedKeys={sortedKeys}
           dataMap={dataMap}
           selectedForte={selectedForte}

@@ -13,10 +13,18 @@ function getAnalysisLabel(analysisMode) {
   return "Voicing";
 }
 
+function getCopyLinkLabel(copyLinkStatus) {
+  if (copyLinkStatus === "copied") return "Link copiato";
+  if (copyLinkStatus === "error") return "Riprova a copiare";
+  return "Copia link condivisibile";
+}
+
 export default function GenericSetControlsPanel({
   title,
   description,
   keyLabel,
+  copyLinkStatus,
+  onCopyLink,
   sortedKeys,
   dataMap,
   selectedForte,
@@ -61,18 +69,41 @@ export default function GenericSetControlsPanel({
           <p className="set-hero__description">{description}</p>
         </div>
 
-        <div className="hero-stats">
-          <div className="hero-stat">
-            <span>Cardinalità</span>
-            <strong>{getCardinalityLabel(noteCount)}</strong>
+        <div className="hero-side">
+          <div className="hero-stats">
+            <div className="hero-stat">
+              <span>Cardinalità</span>
+              <strong>{getCardinalityLabel(noteCount)}</strong>
+            </div>
+            <div className="hero-stat">
+              <span>Vista attiva</span>
+              <strong>{showComplement ? "Complementare" : noteName}</strong>
+            </div>
+            <div className="hero-stat">
+              <span>Lettura</span>
+              <strong>
+                {showComplement ? "Profilo analitico" : getAnalysisLabel(analysisMode)}
+              </strong>
+            </div>
           </div>
-          <div className="hero-stat">
-            <span>Vista attiva</span>
-            <strong>{showComplement ? "Complementare" : noteName}</strong>
-          </div>
-          <div className="hero-stat">
-            <span>Lettura</span>
-            <strong>{showComplement ? "Profilo analitico" : getAnalysisLabel(analysisMode)}</strong>
+
+          <div className="hero-actions">
+            <button
+              type="button"
+              onClick={onCopyLink}
+              className={
+                copyLinkStatus === "copied"
+                  ? "secondary-button secondary-button--success"
+                  : copyLinkStatus === "error"
+                    ? "secondary-button secondary-button--error"
+                    : "secondary-button"
+              }
+            >
+              {getCopyLinkLabel(copyLinkStatus)}
+            </button>
+            <p className="hero-actions__hint">
+              Il link mantiene pagina, set, trasformazioni e filtri correnti.
+            </p>
           </div>
         </div>
       </div>
