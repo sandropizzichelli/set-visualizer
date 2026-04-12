@@ -1,7 +1,32 @@
 import React from "react";
 import Fretboard from "./Fretboard";
 import { PC_TO_NAME } from "./setData";
-import { formatIntervalVector } from "./genericSetPageHelpers";
+import { formatIntervalVector, getIntervalStyle } from "./genericSetPageHelpers";
+
+function ActiveIntervalLegend({ selectedIntervalClasses }) {
+  if (!selectedIntervalClasses.length) return null;
+
+  return (
+    <div className="interval-connection-legend">
+      {selectedIntervalClasses.map((intervalClass) => {
+        const palette = getIntervalStyle(intervalClass);
+
+        return (
+          <div key={`active-ic-${intervalClass}`} className="interval-connection-legend__chip">
+            <span
+              className="interval-connection-legend__swatch"
+              style={{
+                background: `linear-gradient(135deg, ${palette.solid[0]} 0%, ${palette.solid[1]} 100%)`,
+                boxShadow: `0 0 0 3px ${palette.soft[0]}`,
+              }}
+            />
+            <strong>{`ic${intervalClass}`}</strong>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function IntervalLegend({
   title,
@@ -66,6 +91,7 @@ function IntervalLegend({
       <p className="helper-text helper-text--small">
         {notePrefix}: {PC_TO_NAME[legend[0].pc]}
       </p>
+      <ActiveIntervalLegend selectedIntervalClasses={selectedIntervalClasses} />
       <p className="helper-text helper-text--small">
         Clicca un `ic` per isolare sul manico solo le note coinvolte in quella
         famiglia intervallare.

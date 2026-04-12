@@ -893,6 +893,32 @@ code,
   color: var(--text-strong);
 }
 
+.interval-connection-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.interval-connection-legend__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(28, 108, 100, 0.12);
+  color: var(--text-strong);
+  font-size: 0.85rem;
+}
+
+.interval-connection-legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
 .picker-head {
   display: flex;
   align-items: center;
@@ -1060,11 +1086,12 @@ code,
   fill: none;
   stroke-width: 4;
   stroke-linecap: round;
+  stroke-linejoin: round;
   opacity: 0.96;
 }
 
 .fretboard-overlay__line--glow {
-  stroke-width: 12;
+  stroke-width: 14;
   opacity: 0.5;
 }
 

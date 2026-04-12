@@ -1,22 +1,10 @@
 import React from "react";
 import { STRINGS, DISPLAY_STRINGS, FRET_COUNT, PC_TO_NAME } from "./setData";
 import { pcAt } from "./setUtils";
-import { formatSemitoneLabel } from "./genericSetPageHelpers";
-
-const INTERVAL_STYLES = [
-  { solid: ["#0f5f5a", "#24b6a1"], soft: ["rgba(15,95,90,0.2)", "rgba(36,182,161,0.22)"] },
-  { solid: ["#125e73", "#2ab8da"], soft: ["rgba(18,94,115,0.2)", "rgba(42,184,218,0.2)"] },
-  { solid: ["#2150a6", "#5d88f2"], soft: ["rgba(33,80,166,0.2)", "rgba(93,136,242,0.18)"] },
-  { solid: ["#5b3aa7", "#9f76ff"], soft: ["rgba(91,58,167,0.2)", "rgba(159,118,255,0.18)"] },
-  { solid: ["#7f2f83", "#d96bc8"], soft: ["rgba(127,47,131,0.18)", "rgba(217,107,200,0.2)"] },
-  { solid: ["#9a345a", "#f0719d"], soft: ["rgba(154,52,90,0.18)", "rgba(240,113,157,0.18)"] },
-  { solid: ["#b0482a", "#ff9f5c"], soft: ["rgba(176,72,42,0.2)", "rgba(255,159,92,0.2)"] },
-  { solid: ["#9f5a16", "#f7ba45"], soft: ["rgba(159,90,22,0.18)", "rgba(247,186,69,0.22)"] },
-  { solid: ["#847515", "#d1cc53"], soft: ["rgba(132,117,21,0.16)", "rgba(209,204,83,0.24)"] },
-  { solid: ["#5e7f1b", "#9dd84b"], soft: ["rgba(94,127,27,0.18)", "rgba(157,216,75,0.22)"] },
-  { solid: ["#2d7d38", "#64d377"], soft: ["rgba(45,125,56,0.18)", "rgba(100,211,119,0.22)"] },
-  { solid: ["#0d7a63", "#3ed4a7"], soft: ["rgba(13,122,99,0.18)", "rgba(62,212,167,0.2)"] },
-];
+import {
+  formatSemitoneLabel,
+  getIntervalStyle,
+} from "./genericSetPageHelpers";
 
 const LABEL_WIDTH = 56;
 const CELL_WIDTH = 48;
@@ -24,8 +12,8 @@ const CELL_HEIGHT = 42;
 const GRID_GAP = 6;
 const HEADER_HEIGHT = 20;
 
-function getIntervalStyle(interval) {
-  return INTERVAL_STYLES[interval % INTERVAL_STYLES.length];
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function getIntervalClass(firstPc, secondPc) {
@@ -113,6 +101,10 @@ export default function Fretboard({
     selectedPositions.length > 1 &&
     !showAll &&
     !highlightAllAsActive;
+  const overlayWidth =
+    LABEL_WIDTH + (FRET_COUNT + 1) * CELL_WIDTH + (FRET_COUNT + 1) * GRID_GAP;
+  const overlayHeight =
+    HEADER_HEIGHT + visibleStrings.length * CELL_HEIGHT + visibleStrings.length * GRID_GAP;
 
   const connectionSegments = canRenderConnections
     ? selectedPositions.flatMap((firstPosition, firstIndex) =>
@@ -144,25 +136,38 @@ export default function Fretboard({
             GRID_GAP +
             secondRow * (CELL_HEIGHT + GRID_GAP) +
             CELL_HEIGHT / 2;
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const distance = Math.hypot(dx, dy) || 1;
+          const normalX = -dy / distance;
+          const normalY = dx / distance;
+          const bendDirection =
+            (firstPosition.fret + secondPosition.fret + intervalClass) % 2 === 0 ? 1 : -1;
+          const bendStrength = 14 + intervalClass * 4 + Math.abs(firstRow - secondRow) * 2;
+          const midpointX = (x1 + x2) / 2;
+          const midpointY = (y1 + y2) / 2;
+          const controlX = clamp(
+            midpointX + normalX * bendStrength * bendDirection,
+            LABEL_WIDTH + CELL_WIDTH / 2,
+            overlayWidth - CELL_WIDTH / 2
+          );
+          const controlY = clamp(
+            midpointY + normalY * bendStrength * bendDirection,
+            HEADER_HEIGHT + CELL_HEIGHT / 2,
+            overlayHeight - CELL_HEIGHT / 2
+          );
+          const path = `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`;
 
           return [
             {
               key: `${firstPosition.stringIndex}-${firstPosition.fret}-${secondPosition.stringIndex}-${secondPosition.fret}-${intervalClass}`,
               intervalClass,
-              x1,
-              y1,
-              x2,
-              y2,
+              path,
             },
           ];
         })
       )
     : [];
-
-  const overlayWidth =
-    LABEL_WIDTH + (FRET_COUNT + 1) * CELL_WIDTH + (FRET_COUNT + 1) * GRID_GAP;
-  const overlayHeight =
-    HEADER_HEIGHT + visibleStrings.length * CELL_HEIGHT + visibleStrings.length * GRID_GAP;
 
   return (
     <div className="fretboard-scroll">
@@ -182,19 +187,13 @@ export default function Fretboard({
 
                 return (
                   <g key={segment.key}>
-                    <line
-                      x1={segment.x1}
-                      y1={segment.y1}
-                      x2={segment.x2}
-                      y2={segment.y2}
+                    <path
+                      d={segment.path}
                       className="fretboard-overlay__line fretboard-overlay__line--glow"
                       style={{ stroke: palette.soft[0] }}
                     />
-                    <line
-                      x1={segment.x1}
-                      y1={segment.y1}
-                      x2={segment.x2}
-                      y2={segment.y2}
+                    <path
+                      d={segment.path}
                       className="fretboard-overlay__line"
                       style={{ stroke: palette.solid[1] }}
                     />
