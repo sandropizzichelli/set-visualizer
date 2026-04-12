@@ -148,7 +148,7 @@ export default function GenericSetFretboardPanel({
           <div className="panel-stack">
             <p className="helper-text">
               Le caselle attenuate appartengono al {noteName} trasformato. Le caselle
-              evidenziate mostrano la forma selezionata, oppure tutte le forme se
+              evidenziate mostrano la forma selezionata, oppure tutte le forme uniche se
               l&apos;opzione e attiva.
             </p>
 

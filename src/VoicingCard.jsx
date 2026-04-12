@@ -34,6 +34,10 @@ export default function VoicingCard({
   const label = voicing.positions
     .map((position) => `${STRINGS[position.stringIndex].name}:${position.fret}`)
     .join(" · ");
+  const occurrenceRangeLabel =
+    voicing.occurrenceRange && voicing.occurrenceRange.from !== voicing.occurrenceRange.to
+      ? `${voicing.occurrenceRange.from}-${voicing.occurrenceRange.to}`
+      : String(voicing.occurrenceRange?.from ?? voicing.lowestFret);
 
   return (
     <button
@@ -63,6 +67,14 @@ export default function VoicingCard({
         <MetaChip
           label="Rivolto"
           value={`${getBassDegree(voicing, degreeMap)} in basso`}
+        />
+        <MetaChip
+          label="Occorrenze"
+          value={`${voicing.occurrenceCount || 1} posizioni`}
+        />
+        <MetaChip
+          label="Area"
+          value={`tasti ${occurrenceRangeLabel}`}
         />
         {showPrimeForm && (
           <MetaChip label="Prime form" value={`[${voicing.primeForm.join(",")}]`} />

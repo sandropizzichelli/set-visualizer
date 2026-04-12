@@ -270,6 +270,20 @@ export function filterByBassDegree(voicings, bassFilter, degreeMap) {
   );
 }
 
+export function compareVoicingsForDisplay(a, b) {
+  if (a.lowestFret !== b.lowestFret) {
+    return a.lowestFret - b.lowestFret;
+  }
+
+  if (a.span !== b.span) return a.span - b.span;
+
+  if (a.hasSkip !== b.hasSkip) {
+    return Number(a.hasSkip) - Number(b.hasSkip);
+  }
+
+  return a.stringPattern.localeCompare(b.stringPattern);
+}
+
 export function findNNoteVoicings(targetPcs, maxSpan, groups, noteCount) {
   const results = [];
 
@@ -340,6 +354,38 @@ export function findPentachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
 
 export function findHexachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
   return findNNoteVoicings(targetPcs, maxSpan, ALL_6_STRING_GROUPS, 6);
+}
+
+export function groupVoicingsByStructure(voicings) {
+  const grouped = new Map();
+
+  voicings.forEach((voicing) => {
+    const key = makeStructuralKey(voicing);
+
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+
+    grouped.get(key).push(voicing);
+  });
+
+  return [...grouped.values()]
+    .map((occurrences) => {
+      const sortedOccurrences = [...occurrences].sort(compareVoicingsForDisplay);
+      const representative = sortedOccurrences[0];
+      const lowestFrets = sortedOccurrences.map((item) => item.lowestFret);
+
+      return {
+        ...representative,
+        occurrenceCount: sortedOccurrences.length,
+        occurrences: sortedOccurrences,
+        occurrenceRange: {
+          from: Math.min(...lowestFrets),
+          to: Math.max(...lowestFrets),
+        },
+      };
+    })
+    .sort(compareVoicingsForDisplay);
 }
 
 function combinationsOfSize(items, size, start = 0, prefix = [], result = []) {

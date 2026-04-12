@@ -38,8 +38,6 @@ export default function GenericSetControlsPanel({
   onSelectedIntervalVectorChange,
   intervalVectorOptions,
   intervalVectorMatches,
-  maxSpan,
-  onMaxSpanChange,
   showComplement,
   noteName,
   onShowComplementChange,
@@ -201,25 +199,6 @@ export default function GenericSetControlsPanel({
             </div>
           </>
         )}
-
-        <div className="control-card">
-          <div className="range-caption">
-            <div>
-              <div className="control-label">Apertura massima</div>
-              <span>Regola la distanza massima tra i tasti del voicing.</span>
-            </div>
-            <div className="range-value">{maxSpan} tasti</div>
-          </div>
-          <input
-            type="range"
-            min="2"
-            max="8"
-            step="1"
-            value={maxSpan}
-            onChange={(event) => onMaxSpanChange(Number(event.target.value))}
-            className="control-range"
-          />
-        </div>
 
         <div className="control-card">
           <div className="control-card__stack">
@@ -384,7 +363,7 @@ export default function GenericSetControlsPanel({
                         checked={showAll}
                         onChange={(event) => onShowAllChange(event.target.checked)}
                       />
-                      Mostra tutte le forme insieme sul manico
+                      Mostra tutte le forme uniche insieme sul manico
                     </label>
 
                     <label className="toggle-row">

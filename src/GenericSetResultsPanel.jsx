@@ -77,6 +77,7 @@ export default function GenericSetResultsPanel({
   showComplement,
   analysisMode,
   filteredVoicings,
+  filteredVoicingOccurrenceCount,
   noteName,
   selectedForte,
   activeSelectedVoicingIndex,
@@ -101,6 +102,7 @@ export default function GenericSetResultsPanel({
   analysisShowAllVoicings,
   onAnalysisShowAllVoicingsChange,
   analysisFilteredVoicings,
+  analysisVoicingOccurrenceCount,
   activeSelectedAnalysisVoicingIndex,
   onSelectAnalysisVoicing,
   analysisDegreeMap,
@@ -120,14 +122,18 @@ export default function GenericSetResultsPanel({
           <>
             <div className="panel-header">
               <div className="panel-header__copy">
-                <div className="eyebrow">Catalogo dei voicing</div>
-                <h2>Possibilita trovate</h2>
+                <div className="eyebrow">Catalogo delle forme</div>
+                <h2>Forme uniche</h2>
               </div>
               <ClassBadge>{filteredVoicings.length}</ClassBadge>
             </div>
 
             <p className="helper-text">
-              {filteredVoicings.length} forme complessive per il {noteName} selezionato.
+              {filteredVoicings.length} forme uniche e {filteredVoicingOccurrenceCount}{" "}
+              occorrenze complessive per il {noteName} selezionato.
+            </p>
+            <p className="helper-text helper-text--small">
+              Le posizioni duplicate sul manico vengono raggruppate nella stessa forma.
             </p>
 
             {browseMode === "iv" && activeSet && (
@@ -318,15 +324,24 @@ export default function GenericSetResultsPanel({
                               onAnalysisShowAllVoicingsChange(event.target.checked)
                             }
                           />
-                          Mostra tutte le forme di questa occorrenza sul manico
+                          Mostra tutte le forme uniche di questa occorrenza sul manico
                         </label>
                       </div>
 
                       <div className="panel-stack">
                         <div className="picker-head">
-                          <div className="section-title">Voicing / rivolti</div>
+                          <div className="section-title">Forme / rivolti</div>
                           <ClassBadge>{analysisFilteredVoicings.length}</ClassBadge>
                         </div>
+
+                        <p className="helper-text helper-text--small">
+                          {analysisFilteredVoicings.length} forme uniche e{" "}
+                          {analysisVoicingOccurrenceCount} occorrenze per questa
+                          occorrenza concreta.
+                        </p>
+                        <p className="helper-text helper-text--small">
+                          Anche qui le posizioni strutturalmente identiche vengono raggruppate.
+                        </p>
 
                         <div className="results-scroll results-scroll--compact">
                           {analysisFilteredVoicings.map((voicing, index) => (

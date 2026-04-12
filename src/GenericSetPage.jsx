@@ -15,6 +15,7 @@ import {
   findTetrachordVoicings,
   findPentachordVoicings,
   findHexachordVoicings,
+  groupVoicingsByStructure,
 } from "./setUtils";
 import GenericSetControlsPanel from "./GenericSetControlsPanel";
 import GenericSetFretboardPanel from "./GenericSetFretboardPanel";
@@ -41,6 +42,7 @@ const ANALYSIS_MODES = ["voicings", "subsets", "supersets"];
 const DISPLAY_MODES = ["notes", "degrees", "intervals"];
 const TRANSFORM_MODES = ["base", "tn", "tni"];
 const BROWSE_MODES = ["forte", "iv"];
+const FIXED_MAX_SPAN = DEFAULT_MAX_SPAN;
 
 function readBassFilter(params, name, noteCount) {
   const value = params.get(name);
@@ -99,10 +101,6 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
       defaultIntervalVector,
       intervalVectorOptions
     ),
-    maxSpan: readIntegerParam(params, "span", DEFAULT_MAX_SPAN, {
-      min: 2,
-      max: 8,
-    }),
     selected: readIntegerParam(params, "voicing", 0, { min: 0 }),
     showAll: readBooleanParam(params, "showAll", false),
     showComplement: readBooleanParam(params, "complement", false),
@@ -168,7 +166,6 @@ export default function GenericSetPage({
   const [selectedIntervalVector, setSelectedIntervalVector] = useState(
     initialUrlState.selectedIntervalVector
   );
-  const [maxSpan, setMaxSpan] = useState(initialUrlState.maxSpan);
   const [selected, setSelected] = useState(initialUrlState.selected);
   const [showAll, setShowAll] = useState(initialUrlState.showAll);
   const [showComplement, setShowComplement] = useState(
@@ -368,14 +365,14 @@ export default function GenericSetPage({
 
   const rawVoicings = useMemo(() => {
     if (!activeSet || showComplement) return [];
-    return findVoicingFn(activeSet.pcs, maxSpan).map((voicing) => ({
+    return findVoicingFn(activeSet.pcs, FIXED_MAX_SPAN).map((voicing) => ({
       ...voicing,
       primeForm: activeSet.primeForm,
       forteName: activeSet.forteName,
     }));
-  }, [activeSet, maxSpan, showComplement, findVoicingFn]);
+  }, [activeSet, showComplement, findVoicingFn]);
 
-  const filteredVoicings = useMemo(() => {
+  const filteredVoicingOccurrences = useMemo(() => {
     let list = [...rawVoicings];
 
     if (excludeOpenStrings) {
@@ -388,16 +385,15 @@ export default function GenericSetPage({
 
     list = filterByBassDegree(list, bassFilter, activeSet?.degreeMap);
 
-    list.sort((first, second) => {
-      if (first.lowestFret !== second.lowestFret) {
-        return first.lowestFret - second.lowestFret;
-      }
-      if (first.span !== second.span) return first.span - second.span;
-      return first.stringPattern.localeCompare(second.stringPattern);
-    });
-
     return list;
   }, [rawVoicings, excludeOpenStrings, groupFilter, bassFilter, activeSet]);
+
+  const filteredVoicings = useMemo(
+    () => groupVoicingsByStructure(filteredVoicingOccurrences),
+    [filteredVoicingOccurrences]
+  );
+
+  const filteredVoicingOccurrenceCount = filteredVoicingOccurrences.length;
 
   const subsetClasses = useMemo(() => {
     if (!activeSet || showComplement) return [];
@@ -538,7 +534,7 @@ export default function GenericSetPage({
   const analysisRawVoicings = useMemo(() => {
     if (!selectedAnalysisMember || !analysisVoicingFinder) return [];
 
-    return analysisVoicingFinder(selectedAnalysisMember, maxSpan).map((voicing) => ({
+    return analysisVoicingFinder(selectedAnalysisMember, FIXED_MAX_SPAN).map((voicing) => ({
       ...voicing,
       primeForm: selectedAnalysisMemberPrimeForm,
       forteName: selectedAnalysisClass?.forteName || null,
@@ -546,12 +542,11 @@ export default function GenericSetPage({
   }, [
     selectedAnalysisMember,
     analysisVoicingFinder,
-    maxSpan,
     selectedAnalysisMemberPrimeForm,
     selectedAnalysisClass,
   ]);
 
-  const analysisFilteredVoicings = useMemo(() => {
+  const analysisFilteredVoicingOccurrences = useMemo(() => {
     let list = [...analysisRawVoicings];
 
     if (excludeOpenStrings) {
@@ -560,14 +555,6 @@ export default function GenericSetPage({
 
     list = filterByBassDegree(list, analysisBassFilter, analysisDegreeMap);
 
-    list.sort((first, second) => {
-      if (first.lowestFret !== second.lowestFret) {
-        return first.lowestFret - second.lowestFret;
-      }
-      if (first.span !== second.span) return first.span - second.span;
-      return first.stringPattern.localeCompare(second.stringPattern);
-    });
-
     return list;
   }, [
     analysisRawVoicings,
@@ -575,6 +562,13 @@ export default function GenericSetPage({
     analysisBassFilter,
     analysisDegreeMap,
   ]);
+
+  const analysisFilteredVoicings = useMemo(
+    () => groupVoicingsByStructure(analysisFilteredVoicingOccurrences),
+    [analysisFilteredVoicingOccurrences]
+  );
+
+  const analysisVoicingOccurrenceCount = analysisFilteredVoicingOccurrences.length;
 
   const activeSelectedAnalysisVoicingIndex = useMemo(() => {
     if (!analysisFilteredVoicings.length) return 0;
@@ -699,12 +693,6 @@ export default function GenericSetPage({
     setSelectedIntervalClasses([]);
   };
 
-  const handleMaxSpanChange = (span) => {
-    setMaxSpan(span);
-    setSelected(0);
-    setSelectedAnalysisVoicingIndex(0);
-  };
-
   const handleAnalysisModeChange = (mode) => {
     setAnalysisMode(mode);
     resetAnalysisClassSelection({ clearClass: true });
@@ -803,7 +791,7 @@ export default function GenericSetPage({
         "iv",
         browseMode === "iv" ? selectedIntervalVector : null
       );
-      setSearchParam(params, "span", maxSpan);
+      params.delete("span");
       setSearchParam(params, "analysis", analysisMode);
 
       setBooleanSearchParam(params, "showAll", showAll);
@@ -862,7 +850,6 @@ export default function GenericSetPage({
     browseMode,
     activeSelectedForte,
     selectedIntervalVector,
-    maxSpan,
     analysisMode,
     showAll,
     showComplement,
@@ -902,8 +889,6 @@ export default function GenericSetPage({
           onSelectedIntervalVectorChange={handleSelectedIntervalVectorChange}
           intervalVectorOptions={intervalVectorOptions}
           intervalVectorMatches={intervalVectorMatches}
-          maxSpan={maxSpan}
-          onMaxSpanChange={handleMaxSpanChange}
           showComplement={showComplement}
           noteName={noteName}
           onShowComplementChange={setShowComplement}
@@ -970,6 +955,7 @@ export default function GenericSetPage({
             showComplement={showComplement}
             analysisMode={analysisMode}
             filteredVoicings={filteredVoicings}
+            filteredVoicingOccurrenceCount={filteredVoicingOccurrenceCount}
             noteName={noteName}
             selectedForte={activeSelectedForte}
             activeSelectedVoicingIndex={activeSelectedVoicingIndex}
@@ -994,6 +980,7 @@ export default function GenericSetPage({
             analysisShowAllVoicings={analysisShowAllVoicings}
             onAnalysisShowAllVoicingsChange={setAnalysisShowAllVoicings}
             analysisFilteredVoicings={analysisFilteredVoicings}
+            analysisVoicingOccurrenceCount={analysisVoicingOccurrenceCount}
             activeSelectedAnalysisVoicingIndex={activeSelectedAnalysisVoicingIndex}
             onSelectAnalysisVoicing={handleSelectAnalysisVoicing}
             analysisDegreeMap={analysisDegreeMap}
