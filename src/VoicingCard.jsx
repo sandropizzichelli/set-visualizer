@@ -1,6 +1,16 @@
 import React from "react";
 import { STRINGS, PC_TO_NAME } from "./setData";
 import { getBassDegree } from "./setUtils";
+
+function MetaChip({ label, value }) {
+  return (
+    <div className="meta-chip">
+      <div className="meta-chip__label">{label}</div>
+      <div className="meta-chip__value">{value}</div>
+    </div>
+  );
+}
+
 export default function VoicingCard({
   voicing,
   index,
@@ -11,56 +21,50 @@ export default function VoicingCard({
   showForte,
   degreeMap,
 }) {
-  const notes = voicing.positions.map((p) =>
+  const notes = voicing.positions.map((position) =>
     displayMode === "degrees"
-      ? String(degreeMap?.get(p.pc) ?? "")
-      : PC_TO_NAME[p.pc]
+      ? String(degreeMap?.get(position.pc) ?? "")
+      : PC_TO_NAME[position.pc]
   );
+
   const label = voicing.positions
-    .map((p) => `${STRINGS[p.stringIndex].name}:${p.fret}`)
+    .map((position) => `${STRINGS[position.stringIndex].name}:${position.fret}`)
     .join(" · ");
 
   return (
     <button
+      type="button"
       onClick={onSelect}
-      style={{
-        width: "100%",
-        textAlign: "left",
-        padding: "12px",
-        borderRadius: "12px",
-        border: selected ? "2px solid black" : "1px solid #ddd",
-        background: selected ? "#f3f4f6" : "white",
-        marginBottom: "10px",
-        cursor: "pointer",
-      }}
+      className={selected ? "voicing-card voicing-card--selected" : "voicing-card"}
     >
-      <div style={{ fontWeight: "bold" }}>Forma {index + 1}</div>
-      <div style={{ marginTop: "4px" }}>{notes.join(" – ")}</div>
-      <div style={{ marginTop: "4px", fontSize: "12px", color: "#666" }}>
-        {label}
-      </div>
-      <div style={{ marginTop: "4px", fontSize: "12px", color: "#666" }}>
-        Gruppo corde: {voicing.strings.map((s) => STRINGS[s].name).join("-")}
-      </div>
-      <div style={{ marginTop: "4px", fontSize: "12px", color: "#666" }}>
-        Apertura: {voicing.span} tasti
-      </div>
-      <div style={{ marginTop: "4px", fontSize: "12px", color: "#666" }}>
-        {voicing.hasSkip ? "Con salto di corda" : "Corde adiacenti"}
-      </div>
-      <div style={{ marginTop: "4px", fontSize: "12px", color: "#666" }}>
-        Rivolto: {getBassDegree(voicing, degreeMap)} in basso
-      </div>
-      {showPrimeForm && (
-        <div style={{ marginTop: "4px", fontSize: "12px", color: "#666" }}>
-          Prime form: [{voicing.primeForm.join(",")}]
+      <div className="voicing-card__header">
+        <div>
+          <div className="voicing-card__eyebrow">Forma {index + 1}</div>
+          <div className="voicing-card__notes">{notes.join(" • ")}</div>
         </div>
-      )}
-      {showForte && (
-        <div style={{ marginTop: "4px", fontSize: "12px", color: "#666" }}>
-          Forte: {voicing.forteName || "n.d."}
-        </div>
-      )}
+        <span className="class-badge">{voicing.span} tasti</span>
+      </div>
+
+      <div className="voicing-card__location">{label}</div>
+
+      <div className="voicing-card__meta">
+        <MetaChip
+          label="Gruppo corde"
+          value={voicing.strings.map((stringIndex) => STRINGS[stringIndex].name).join("-")}
+        />
+        <MetaChip
+          label="Connessione"
+          value={voicing.hasSkip ? "Con salto di corda" : "Corde adiacenti"}
+        />
+        <MetaChip
+          label="Rivolto"
+          value={`${getBassDegree(voicing, degreeMap)} in basso`}
+        />
+        {showPrimeForm && (
+          <MetaChip label="Prime form" value={`[${voicing.primeForm.join(",")}]`} />
+        )}
+        {showForte && <MetaChip label="Forte" value={voicing.forteName || "n.d."} />}
+      </div>
     </button>
   );
 }

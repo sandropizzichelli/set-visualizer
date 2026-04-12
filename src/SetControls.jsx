@@ -3,15 +3,9 @@ import React from "react";
 export function PillButton({ active, onClick, children }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      style={{
-        padding: "8px 12px",
-        borderRadius: "999px",
-        border: active ? "2px solid #111" : "1px solid #ccc",
-        background: active ? "#e2e8f0" : "white",
-        cursor: "pointer",
-        fontSize: "14px",
-      }}
+      className={active ? "pill-button pill-button--active" : "pill-button"}
     >
       {children}
     </button>
@@ -19,18 +13,14 @@ export function PillButton({ active, onClick, children }) {
 }
 
 export function SectionTitle({ children }) {
-  return (
-    <div style={{ fontWeight: "bold", marginBottom: "8px", marginTop: "4px" }}>
-      {children}
-    </div>
-  );
+  return <div className="section-title">{children}</div>;
 }
 
 export function BassButtons({ noteCount, value, onChange }) {
   return (
-    <div>
+    <div className="control-card__stack">
       <SectionTitle>Rivolti / basso</SectionTitle>
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+      <div className="button-row">
         <PillButton active={value === "all"} onClick={() => onChange("all")}>
           Tutti
         </PillButton>
@@ -50,16 +40,9 @@ export function BassButtons({ noteCount, value, onChange }) {
 
 export function TransformButtons({ mode, setMode, amount, setAmount }) {
   return (
-    <div>
+    <div className="control-card__stack">
       <SectionTitle>Inversioni / trasformazioni Tn-TnI</SectionTitle>
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          flexWrap: "wrap",
-          marginBottom: "8px",
-        }}
-      >
+      <div className="button-row">
         <PillButton active={mode === "base"} onClick={() => setMode("base")}>
           Originale
         </PillButton>
@@ -72,13 +55,9 @@ export function TransformButtons({ mode, setMode, amount, setAmount }) {
       </div>
 
       {mode !== "base" && (
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+        <div className="button-row">
           {Array.from({ length: 12 }, (_, i) => (
-            <PillButton
-              key={i}
-              active={amount === i}
-              onClick={() => setAmount(i)}
-            >
+            <PillButton key={i} active={amount === i} onClick={() => setAmount(i)}>
               {i}
             </PillButton>
           ))}

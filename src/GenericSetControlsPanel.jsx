@@ -7,6 +7,12 @@ import {
 } from "./SetControls";
 import { getCardinalityLabel } from "./genericSetPageHelpers";
 
+function getAnalysisLabel(analysisMode) {
+  if (analysisMode === "subsets") return "Subset-class";
+  if (analysisMode === "supersets") return "Superset-class";
+  return "Voicing";
+}
+
 export default function GenericSetControlsPanel({
   title,
   description,
@@ -47,47 +53,37 @@ export default function GenericSetControlsPanel({
   onExcludeOpenStringsChange,
 }) {
   return (
-    <div
-      style={{
-        background: "white",
-        padding: "24px",
-        borderRadius: "18px",
-        marginBottom: "24px",
-        border: "1px solid #ddd",
-      }}
-    >
-      <h1 style={{ marginTop: 0 }}>{title}</h1>
-      <p>{description}</p>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.4fr 0.8fr",
-          gap: "20px",
-          marginTop: "20px",
-        }}
-      >
+    <div className="set-panel set-panel--hero">
+      <div className="set-hero">
         <div>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              fontWeight: "bold",
-            }}
-          >
-            {keyLabel}
-          </label>
+          <div className="eyebrow">Set-class explorer</div>
+          <h1>{title}</h1>
+          <p className="set-hero__description">{description}</p>
+        </div>
+
+        <div className="hero-stats">
+          <div className="hero-stat">
+            <span>Cardinalità</span>
+            <strong>{getCardinalityLabel(noteCount)}</strong>
+          </div>
+          <div className="hero-stat">
+            <span>Vista attiva</span>
+            <strong>{showComplement ? "Complementare" : noteName}</strong>
+          </div>
+          <div className="hero-stat">
+            <span>Lettura</span>
+            <strong>{showComplement ? "Profilo analitico" : getAnalysisLabel(analysisMode)}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="control-grid">
+        <div className="control-card control-card--wide">
+          <label className="control-label">{keyLabel}</label>
           <select
             value={selectedForte}
-            onChange={(e) => onSelectedForteChange(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              borderRadius: "12px",
-              border: "1px solid #ccc",
-              fontSize: "16px",
-              background: "white",
-            }}
+            onChange={(event) => onSelectedForteChange(event.target.value)}
+            className="control-select"
           >
             {sortedKeys.map((key) => (
               <option key={key} value={key}>
@@ -97,290 +93,248 @@ export default function GenericSetControlsPanel({
           </select>
         </div>
 
-        <div>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              fontWeight: "bold",
-            }}
-          >
-            Apertura massima: {maxSpan} tasti
-          </label>
+        <div className="control-card">
+          <div className="range-caption">
+            <div>
+              <div className="control-label">Apertura massima</div>
+              <span>Regola la distanza massima tra i tasti del voicing.</span>
+            </div>
+            <div className="range-value">{maxSpan} tasti</div>
+          </div>
           <input
             type="range"
             min="2"
             max="8"
             step="1"
             value={maxSpan}
-            onChange={(e) => onMaxSpanChange(Number(e.target.value))}
-            style={{ width: "100%" }}
+            onChange={(event) => onMaxSpanChange(Number(event.target.value))}
+            className="control-range"
           />
         </div>
-      </div>
 
-      <div
-        style={{
-          marginTop: "16px",
-          display: "flex",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <PillButton
-          active={!showComplement}
-          onClick={() => onShowComplementChange(false)}
-        >
-          Mostra {noteName}
-        </PillButton>
-        <PillButton
-          active={showComplement}
-          onClick={() => onShowComplementChange(true)}
-        >
-          Mostra complementare
-        </PillButton>
-      </div>
-
-      {!showComplement && (
-        <>
-          <div style={{ marginTop: "16px" }}>
-            <SectionTitle>Analisi insiemistica</SectionTitle>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div className="control-card">
+          <div className="control-card__stack">
+            <SectionTitle>Modalità di vista</SectionTitle>
+            <div className="segmented-row">
               <PillButton
-                active={analysisMode === "voicings"}
-                onClick={() => onAnalysisModeChange("voicings")}
+                active={!showComplement}
+                onClick={() => onShowComplementChange(false)}
               >
-                Voicing
+                Mostra {noteName}
               </PillButton>
               <PillButton
-                active={analysisMode === "subsets"}
-                onClick={() => onAnalysisModeChange("subsets")}
+                active={showComplement}
+                onClick={() => onShowComplementChange(true)}
               >
-                Subset-class
-              </PillButton>
-              <PillButton
-                active={analysisMode === "supersets"}
-                onClick={() => onAnalysisModeChange("supersets")}
-              >
-                Superset-class
+                Mostra complementare
               </PillButton>
             </div>
           </div>
+        </div>
 
-          {analysisMode === "subsets" && subsetCardinalityOptions.length > 0 && (
-            <div style={{ marginTop: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "bold",
-                }}
-              >
-                Tipo di subset
-              </label>
-              <select
-                value={subsetTargetCardinality}
-                onChange={(e) =>
-                  onSubsetTargetCardinalityChange(Number(e.target.value))
-                }
-                style={{
-                  width: "100%",
-                  maxWidth: "280px",
-                  padding: "12px",
-                  borderRadius: "12px",
-                  border: "1px solid #ccc",
-                  fontSize: "16px",
-                  background: "white",
-                }}
-              >
-                {subsetCardinalityOptions.map((n) => (
-                  <option key={n} value={n}>
-                    {getCardinalityLabel(n)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+        {!showComplement && (
+          <>
+            <div className="control-card control-card--wide">
+              <div className="control-card__stack">
+                <SectionTitle>Analisi insiemistica</SectionTitle>
+                <div className="segmented-row">
+                  <PillButton
+                    active={analysisMode === "voicings"}
+                    onClick={() => onAnalysisModeChange("voicings")}
+                  >
+                    Voicing
+                  </PillButton>
+                  <PillButton
+                    active={analysisMode === "subsets"}
+                    onClick={() => onAnalysisModeChange("subsets")}
+                  >
+                    Subset-class
+                  </PillButton>
+                  <PillButton
+                    active={analysisMode === "supersets"}
+                    onClick={() => onAnalysisModeChange("supersets")}
+                  >
+                    Superset-class
+                  </PillButton>
+                </div>
 
-          {analysisMode === "supersets" &&
-            supersetCardinalityOptions.length > 0 && (
-              <div style={{ marginTop: "16px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Tipo di superset
-                </label>
-                <select
-                  value={supersetTargetCardinality}
-                  onChange={(e) =>
-                    onSupersetTargetCardinalityChange(Number(e.target.value))
-                  }
-                  style={{
-                    width: "100%",
-                    maxWidth: "280px",
-                    padding: "12px",
-                    borderRadius: "12px",
-                    border: "1px solid #ccc",
-                    fontSize: "16px",
-                    background: "white",
-                  }}
-                >
-                  {supersetCardinalityOptions.map((n) => (
-                    <option key={n} value={n}>
-                      {getCardinalityLabel(n)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-          {analysisMode === "voicings" ? (
-            <>
-              <div
-                style={{
-                  display: "grid",
-                  gap: "14px",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  marginTop: "16px",
-                }}
-              >
-                <div>
-                  <SectionTitle>Gruppo corde</SectionTitle>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <PillButton
-                      active={groupFilter === "all"}
-                      onClick={() => onGroupFilterChange("all")}
+                {analysisMode === "subsets" && subsetCardinalityOptions.length > 0 && (
+                  <div>
+                    <label className="control-label">Tipo di subset</label>
+                    <select
+                      value={subsetTargetCardinality}
+                      onChange={(event) =>
+                        onSubsetTargetCardinalityChange(Number(event.target.value))
+                      }
+                      className="control-select"
                     >
-                      Tutti
-                    </PillButton>
-                    {availableGroupPatterns.map((pattern) => (
-                      <PillButton
-                        key={pattern}
-                        active={groupFilter === pattern}
-                        onClick={() => onGroupFilterChange(pattern)}
+                      {subsetCardinalityOptions.map((cardinality) => (
+                        <option key={cardinality} value={cardinality}>
+                          {getCardinalityLabel(cardinality)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {analysisMode === "supersets" &&
+                  supersetCardinalityOptions.length > 0 && (
+                    <div>
+                      <label className="control-label">Tipo di superset</label>
+                      <select
+                        value={supersetTargetCardinality}
+                        onChange={(event) =>
+                          onSupersetTargetCardinalityChange(Number(event.target.value))
+                        }
+                        className="control-select"
                       >
-                        {pattern}
+                        {supersetCardinalityOptions.map((cardinality) => (
+                          <option key={cardinality} value={cardinality}>
+                            {getCardinalityLabel(cardinality)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+              </div>
+            </div>
+
+            {analysisMode === "voicings" ? (
+              <>
+                <div className="control-card">
+                  <div className="control-card__stack">
+                    <SectionTitle>Gruppo corde</SectionTitle>
+                    <div className="button-row">
+                      <PillButton
+                        active={groupFilter === "all"}
+                        onClick={() => onGroupFilterChange("all")}
+                      >
+                        Tutti
                       </PillButton>
-                    ))}
+                      {availableGroupPatterns.map((pattern) => (
+                        <PillButton
+                          key={pattern}
+                          active={groupFilter === pattern}
+                          onClick={() => onGroupFilterChange(pattern)}
+                        >
+                          {pattern}
+                        </PillButton>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <SectionTitle>Vista</SectionTitle>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <PillButton
-                      active={displayMode === "notes"}
-                      onClick={() => onDisplayModeChange("notes")}
-                    >
-                      Note
-                    </PillButton>
-                    <PillButton
-                      active={displayMode === "degrees"}
-                      onClick={() => onDisplayModeChange("degrees")}
-                    >
-                      {degreeButtonLabel}
-                    </PillButton>
+                <div className="control-card">
+                  <div className="control-card__stack">
+                    <SectionTitle>Vista</SectionTitle>
+                    <div className="button-row">
+                      <PillButton
+                        active={displayMode === "notes"}
+                        onClick={() => onDisplayModeChange("notes")}
+                      >
+                        Note
+                      </PillButton>
+                      <PillButton
+                        active={displayMode === "degrees"}
+                        onClick={() => onDisplayModeChange("degrees")}
+                      >
+                        {degreeButtonLabel}
+                      </PillButton>
+                    </div>
                   </div>
                 </div>
 
-                <BassButtons
-                  noteCount={noteCount}
-                  value={bassFilter}
-                  onChange={onBassFilterChange}
-                />
-
-                <TransformButtons
-                  mode={transformMode}
-                  setMode={onTransformModeChange}
-                  amount={transformAmount}
-                  setAmount={onTransformAmountChange}
-                />
-              </div>
-
-              <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={showAll}
-                    onChange={(e) => onShowAllChange(e.target.checked)}
+                <div className="control-card">
+                  <BassButtons
+                    noteCount={noteCount}
+                    value={bassFilter}
+                    onChange={onBassFilterChange}
                   />
-                  Mostra tutte le forme insieme sul manico
-                </label>
+                </div>
 
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={excludeOpenStrings}
-                    onChange={(e) =>
-                      onExcludeOpenStringsChange(e.target.checked)
-                    }
+                <div className="control-card control-card--wide">
+                  <TransformButtons
+                    mode={transformMode}
+                    setMode={onTransformModeChange}
+                    amount={transformAmount}
+                    setAmount={onTransformAmountChange}
                   />
-                  Escludi corde vuote
-                </label>
-              </div>
-            </>
-          ) : (
-            <>
-              <div
-                style={{
-                  display: "grid",
-                  gap: "14px",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  marginTop: "16px",
-                }}
-              >
-                <div>
-                  <SectionTitle>Vista</SectionTitle>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <PillButton
-                      active={displayMode === "notes"}
-                      onClick={() => onDisplayModeChange("notes")}
-                    >
-                      Note
-                    </PillButton>
-                    <PillButton
-                      active={displayMode === "degrees"}
-                      onClick={() => onDisplayModeChange("degrees")}
-                    >
-                      {degreeButtonLabel}
-                    </PillButton>
+                </div>
+
+                <div className="control-card control-card--wide">
+                  <div className="toggle-stack">
+                    <label className="toggle-row">
+                      <input
+                        type="checkbox"
+                        checked={showAll}
+                        onChange={(event) => onShowAllChange(event.target.checked)}
+                      />
+                      Mostra tutte le forme insieme sul manico
+                    </label>
+
+                    <label className="toggle-row">
+                      <input
+                        type="checkbox"
+                        checked={excludeOpenStrings}
+                        onChange={(event) =>
+                          onExcludeOpenStringsChange(event.target.checked)
+                        }
+                      />
+                      Escludi corde vuote
+                    </label>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="control-card">
+                  <div className="control-card__stack">
+                    <SectionTitle>Vista</SectionTitle>
+                    <div className="button-row">
+                      <PillButton
+                        active={displayMode === "notes"}
+                        onClick={() => onDisplayModeChange("notes")}
+                      >
+                        Note
+                      </PillButton>
+                      <PillButton
+                        active={displayMode === "degrees"}
+                        onClick={() => onDisplayModeChange("degrees")}
+                      >
+                        {degreeButtonLabel}
+                      </PillButton>
+                    </div>
                   </div>
                 </div>
 
-                <TransformButtons
-                  mode={transformMode}
-                  setMode={onTransformModeChange}
-                  amount={transformAmount}
-                  setAmount={onTransformAmountChange}
-                />
-              </div>
-
-              <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
-                <label
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={excludeOpenStrings}
-                    onChange={(e) =>
-                      onExcludeOpenStringsChange(e.target.checked)
-                    }
+                <div className="control-card control-card--wide">
+                  <TransformButtons
+                    mode={transformMode}
+                    setMode={onTransformModeChange}
+                    amount={transformAmount}
+                    setAmount={onTransformAmountChange}
                   />
-                  Escludi corde vuote
-                </label>
-              </div>
-            </>
-          )}
-        </>
-      )}
+                </div>
+
+                <div className="control-card control-card--wide">
+                  <div className="toggle-stack">
+                    <label className="toggle-row">
+                      <input
+                        type="checkbox"
+                        checked={excludeOpenStrings}
+                        onChange={(event) =>
+                          onExcludeOpenStringsChange(event.target.checked)
+                        }
+                      />
+                      Escludi corde vuote
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

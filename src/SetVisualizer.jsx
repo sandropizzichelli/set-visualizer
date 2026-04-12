@@ -82,47 +82,34 @@ function HexachordPage() {
 
 function PageSwitcher({ page, setPage }) {
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "16px",
-        right: "16px",
-        zIndex: 1000,
-        display: "flex",
-        gap: "8px",
-        background: "rgba(255,255,255,0.95)",
-        padding: "8px",
-        borderRadius: "14px",
-        border: "1px solid #ddd",
-        boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
-        flexWrap: "wrap",
-        maxWidth: "90vw",
-      }}
-    >
-      <PillButton
-        active={page === "tricordi"}
-        onClick={() => setPage("tricordi")}
-      >
-        Pagina tricordi
-      </PillButton>
-      <PillButton
-        active={page === "tetracordi"}
-        onClick={() => setPage("tetracordi")}
-      >
-        Pagina tetracordi
-      </PillButton>
-      <PillButton
-        active={page === "pentacordi"}
-        onClick={() => setPage("pentacordi")}
-      >
-        Pagina pentacordi
-      </PillButton>
-      <PillButton
-        active={page === "esacordi"}
-        onClick={() => setPage("esacordi")}
-      >
-        Pagina esacordi
-      </PillButton>
+    <div className="page-switcher">
+      <div className="page-switcher__panel">
+        <div className="page-switcher__copy">
+          <div className="eyebrow">Atlante armonico</div>
+          <div className="page-switcher__title">Scegli la famiglia di set</div>
+        </div>
+
+        <div className="page-switcher__actions">
+          <PillButton active={page === "tricordi"} onClick={() => setPage("tricordi")}>
+            Tricordi
+          </PillButton>
+          <PillButton
+            active={page === "tetracordi"}
+            onClick={() => setPage("tetracordi")}
+          >
+            Tetracordi
+          </PillButton>
+          <PillButton
+            active={page === "pentacordi"}
+            onClick={() => setPage("pentacordi")}
+          >
+            Pentacordi
+          </PillButton>
+          <PillButton active={page === "esacordi"} onClick={() => setPage("esacordi")}>
+            Esacordi
+          </PillButton>
+        </div>
+      </div>
     </div>
   );
 }

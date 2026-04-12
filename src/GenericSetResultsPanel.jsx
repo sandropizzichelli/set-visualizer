@@ -5,42 +5,14 @@ import VoicingCard from "./VoicingCard";
 import { getCardinalityLabel, getClassKey } from "./genericSetPageHelpers";
 
 function ClassBadge({ children }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "4px 10px",
-        borderRadius: "999px",
-        background: "#e2e8f0",
-        fontSize: "12px",
-        fontWeight: "bold",
-        color: "#111",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
+  return <span className="class-badge">{children}</span>;
 }
 
 function DetailChip({ label, value }) {
   return (
-    <div
-      style={{
-        padding: "10px 12px",
-        borderRadius: "12px",
-        background: "white",
-        border: "1px solid #dbe3ee",
-      }}
-    >
-      <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "4px" }}>
-        {label}
-      </div>
-      <div style={{ fontSize: "13px", fontWeight: "bold", color: "#111" }}>
-        {value}
-      </div>
+    <div className="detail-chip">
+      <div className="detail-chip__label">{label}</div>
+      <div className="detail-chip__value">{value}</div>
     </div>
   );
 }
@@ -48,38 +20,18 @@ function DetailChip({ label, value }) {
 function ClassResultRow({ item, active, onClick }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      style={{
-        width: "100%",
-        padding: "12px 14px",
-        borderRadius: "12px",
-        border: active ? "2px solid #111" : "1px solid #ddd",
-        background: active ? "#e2e8f0" : "white",
-        marginBottom: "10px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: "12px",
-        cursor: "pointer",
-        textAlign: "left",
-      }}
+      className={active ? "class-result-row class-result-row--active" : "class-result-row"}
     >
       <div>
-        <div style={{ fontWeight: "bold", fontSize: "15px" }}>
-          {item.forteName || "n.d."}
-        </div>
-        <div
-          style={{
-            marginTop: "4px",
-            fontSize: "12px",
-            color: "#666",
-          }}
-        >
+        <div className="class-result-row__title">{item.forteName || "n.d."}</div>
+        <div className="class-result-row__meta">
           PF [{item.primeForm.join(",")}] · {getCardinalityLabel(item.cardinality)}
         </div>
       </div>
 
-      <ClassBadge>× {item.concreteCount}</ClassBadge>
+      <ClassBadge>x {item.concreteCount}</ClassBadge>
     </button>
   );
 }
@@ -115,331 +67,243 @@ export default function GenericSetResultsPanel({
   complementName,
   complementData,
 }) {
+  const analysisLabel = analysisMode === "subsets" ? "Subset-class" : "Superset-class";
+  const analysisTargetLabel = getCardinalityLabel(
+    analysisMode === "subsets" ? subsetTargetCardinality : supersetTargetCardinality
+  ).toLowerCase();
+
   return (
-    <div
-      style={{
-        background: "white",
-        padding: "24px",
-        borderRadius: "18px",
-        border: "1px solid #ddd",
-      }}
-    >
+    <div className="set-panel">
       {!showComplement ? (
         analysisMode === "voicings" ? (
           <>
-            <h2>Possibilità trovate</h2>
-            <p style={{ color: "#666" }}>
-              {filteredVoicings.length} forme complessive per il {noteName}{" "}
-              selezionato.
+            <div className="panel-header">
+              <div className="panel-header__copy">
+                <div className="eyebrow">Catalogo dei voicing</div>
+                <h2>Possibilità trovate</h2>
+              </div>
+              <ClassBadge>{filteredVoicings.length}</ClassBadge>
+            </div>
+
+            <p className="helper-text">
+              {filteredVoicings.length} forme complessive per il {noteName} selezionato.
             </p>
 
-            <div
-              style={{
-                maxHeight: "760px",
-                overflowY: "auto",
-                marginTop: "16px",
-              }}
-            >
-              {filteredVoicings.map((v, i) => (
+            <div className="results-scroll">
+              {filteredVoicings.map((voicing, index) => (
                 <VoicingCard
-                  key={`${selectedForte}-${i}-${v.positions
-                    .map((p) => `${p.stringIndex}-${p.fret}`)
+                  key={`${selectedForte}-${index}-${voicing.positions
+                    .map((position) => `${position.stringIndex}-${position.fret}`)
                     .join("-")}`}
-                  voicing={v}
-                  index={i}
-                  selected={i === activeSelectedVoicingIndex}
-                  onSelect={() => onSelectVoicing(i)}
+                  voicing={voicing}
+                  index={index}
+                  selected={index === activeSelectedVoicingIndex}
+                  onSelect={() => onSelectVoicing(index)}
                   displayMode={displayMode}
                   showPrimeForm={true}
                   showForte={true}
                   degreeMap={activeSet?.degreeMap}
                 />
               ))}
+
+              {filteredVoicings.length === 0 && (
+                <p className="empty-note">Nessuna forma disponibile con i filtri correnti.</p>
+              )}
             </div>
           </>
         ) : (
           <>
-            <h2>{analysisMode === "subsets" ? "Subset-class" : "Superset-class"}</h2>
+            <div className="panel-header">
+              <div className="panel-header__copy">
+                <div className="eyebrow">Analisi comparata</div>
+                <h2>{analysisLabel}</h2>
+              </div>
+              <ClassBadge>{analysisClasses.length}</ClassBadge>
+            </div>
 
-            <p style={{ color: "#666" }}>
-              {analysisClasses.length} classi trovate in{" "}
-              {getCardinalityLabel(
-                analysisMode === "subsets"
-                  ? subsetTargetCardinality
-                  : supersetTargetCardinality
-              ).toLowerCase()}
-              .
+            <p className="helper-text">
+              {analysisClasses.length} classi trovate in {analysisTargetLabel}.
             </p>
 
-            <div
-              style={{
-                maxHeight: "280px",
-                overflowY: "auto",
-                marginTop: "16px",
-              }}
-            >
+            <div className="results-scroll results-scroll--short">
               {analysisClasses.map((item) => (
                 <ClassResultRow
                   key={`${analysisMode}-${getClassKey(item)}`}
                   item={item}
-                  active={
-                    getClassKey(item) === getClassKey(selectedAnalysisClass || item)
-                  }
+                  active={getClassKey(item) === getClassKey(selectedAnalysisClass || item)}
                   onClick={() => onSelectAnalysisClass(getClassKey(item))}
                 />
               ))}
+
+              {analysisClasses.length === 0 && (
+                <p className="empty-note">Nessuna classe trovata per i filtri attivi.</p>
+              )}
             </div>
 
             {selectedAnalysisClass && (
-              <div
-                style={{
-                  marginTop: "18px",
-                  padding: "14px",
-                  borderRadius: "14px",
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div style={{ fontWeight: "bold", marginBottom: "12px" }}>
-                  Dettaglio classe
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: "10px",
-                  }}
-                >
-                  <DetailChip
-                    label="Classe"
-                    value={selectedAnalysisClass.forteName || "n.d."}
-                  />
-                  <DetailChip
-                    label="Prime form"
-                    value={`[${selectedAnalysisClass.primeForm.join(",")}]`}
-                  />
-                  <DetailChip
-                    label="Occorrenze"
-                    value={String(selectedAnalysisClass.concreteCount)}
-                  />
-                </div>
-
-                {analysisMembers.length > 0 && (
-                  <div style={{ marginTop: "14px" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "10px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <label style={{ fontWeight: "bold" }}>
-                        Occorrenza concreta
-                      </label>
-                      <ClassBadge>
-                        {activeSelectedAnalysisMemberIndex + 1} / {analysisMembers.length}
-                      </ClassBadge>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "auto 1fr auto",
-                        gap: "8px",
-                        alignItems: "center",
-                      }}
-                    >
-                      <button
-                        onClick={() =>
-                          onAnalysisMemberIndexChange(
-                            Math.max(0, activeSelectedAnalysisMemberIndex - 1)
-                          )
-                        }
-                        disabled={activeSelectedAnalysisMemberIndex === 0}
-                        style={{
-                          padding: "10px 12px",
-                          borderRadius: "10px",
-                          border: "1px solid #ccc",
-                          background:
-                            activeSelectedAnalysisMemberIndex === 0
-                              ? "#f8fafc"
-                              : "white",
-                          cursor:
-                            activeSelectedAnalysisMemberIndex === 0
-                              ? "not-allowed"
-                              : "pointer",
-                        }}
-                      >
-                        ←
-                      </button>
-
-                      <select
-                        value={activeSelectedAnalysisMemberIndex}
-                        onChange={(e) =>
-                          onAnalysisMemberIndexChange(Number(e.target.value))
-                        }
-                        style={{
-                          width: "100%",
-                          padding: "12px",
-                          borderRadius: "12px",
-                          border: "1px solid #ccc",
-                          fontSize: "15px",
-                          background: "white",
-                        }}
-                      >
-                        {analysisMembers.map((member, i) => (
-                          <option
-                            key={`${getClassKey(selectedAnalysisClass)}-${i}`}
-                            value={i}
-                          >
-                            Occorrenza {i + 1} — [{member.join(",")}]
-                          </option>
-                        ))}
-                      </select>
-
-                      <button
-                        onClick={() =>
-                          onAnalysisMemberIndexChange(
-                            Math.min(
-                              analysisMembers.length - 1,
-                              activeSelectedAnalysisMemberIndex + 1
-                            )
-                          )
-                        }
-                        disabled={
-                          activeSelectedAnalysisMemberIndex ===
-                          analysisMembers.length - 1
-                        }
-                        style={{
-                          padding: "10px 12px",
-                          borderRadius: "10px",
-                          border: "1px solid #ccc",
-                          background:
-                            activeSelectedAnalysisMemberIndex ===
-                            analysisMembers.length - 1
-                              ? "#f8fafc"
-                              : "white",
-                          cursor:
-                            activeSelectedAnalysisMemberIndex ===
-                            analysisMembers.length - 1
-                              ? "not-allowed"
-                              : "pointer",
-                        }}
-                      >
-                        →
-                      </button>
-                    </div>
+              <div className="analysis-card">
+                <div className="panel-stack">
+                  <div className="picker-head">
+                    <div className="section-title">Dettaglio classe</div>
+                    <ClassBadge>{selectedAnalysisClass.forteName || "n.d."}</ClassBadge>
                   </div>
-                )}
 
-                {canRenderAnalysisVoicings ? (
-                  <>
-                    <div style={{ marginTop: "16px" }}>
-                      <BassButtons
-                        noteCount={selectedAnalysisMember.length}
-                        value={analysisBassFilter}
-                        onChange={onAnalysisBassFilterChange}
-                      />
-                    </div>
+                  <div className="detail-grid">
+                    <DetailChip
+                      label="Classe"
+                      value={selectedAnalysisClass.forteName || "n.d."}
+                    />
+                    <DetailChip
+                      label="Prime form"
+                      value={`[${selectedAnalysisClass.primeForm.join(",")}]`}
+                    />
+                    <DetailChip
+                      label="Occorrenze"
+                      value={String(selectedAnalysisClass.concreteCount)}
+                    />
+                  </div>
 
-                    <div
-                      style={{
-                        marginTop: "14px",
-                        display: "grid",
-                        gap: "10px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={analysisShowAllVoicings}
-                          onChange={(e) =>
-                            onAnalysisShowAllVoicingsChange(e.target.checked)
+                  {analysisMembers.length > 0 && (
+                    <div className="panel-stack">
+                      <div className="picker-head">
+                        <label className="section-title">Occorrenza concreta</label>
+                        <ClassBadge>
+                          {activeSelectedAnalysisMemberIndex + 1} / {analysisMembers.length}
+                        </ClassBadge>
+                      </div>
+
+                      <div className="picker-row">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onAnalysisMemberIndexChange(
+                              Math.max(0, activeSelectedAnalysisMemberIndex - 1)
+                            )
                           }
+                          disabled={activeSelectedAnalysisMemberIndex === 0}
+                          className="nav-button"
+                        >
+                          ←
+                        </button>
+
+                        <select
+                          value={activeSelectedAnalysisMemberIndex}
+                          onChange={(event) =>
+                            onAnalysisMemberIndexChange(Number(event.target.value))
+                          }
+                          className="control-select"
+                        >
+                          {analysisMembers.map((member, index) => (
+                            <option
+                              key={`${getClassKey(selectedAnalysisClass)}-${index}`}
+                              value={index}
+                            >
+                              Occorrenza {index + 1} — [{member.join(",")}]
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onAnalysisMemberIndexChange(
+                              Math.min(
+                                analysisMembers.length - 1,
+                                activeSelectedAnalysisMemberIndex + 1
+                              )
+                            )
+                          }
+                          disabled={
+                            activeSelectedAnalysisMemberIndex === analysisMembers.length - 1
+                          }
+                          className="nav-button"
+                        >
+                          →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {canRenderAnalysisVoicings ? (
+                    <>
+                      <div className="control-card__stack">
+                        <BassButtons
+                          noteCount={selectedAnalysisMember.length}
+                          value={analysisBassFilter}
+                          onChange={onAnalysisBassFilterChange}
                         />
-                        Mostra tutte le forme di questa occorrenza sul manico
-                      </label>
-                    </div>
-
-                    <div style={{ marginTop: "14px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "10px",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        <div style={{ fontWeight: "bold" }}>
-                          Voicing / rivolti dell’occorrenza
-                        </div>
-                        <ClassBadge>{analysisFilteredVoicings.length}</ClassBadge>
                       </div>
 
-                      <div
-                        style={{
-                          maxHeight: "260px",
-                          overflowY: "auto",
-                        }}
-                      >
-                        {analysisFilteredVoicings.map((v, i) => (
-                          <VoicingCard
-                            key={`${analysisMode}-${getClassKey(
-                              selectedAnalysisClass
-                            )}-${activeSelectedAnalysisMemberIndex}-${i}-${v.positions
-                              .map((p) => `${p.stringIndex}-${p.fret}`)
-                              .join("-")}`}
-                            voicing={v}
-                            index={i}
-                            selected={i === activeSelectedAnalysisVoicingIndex}
-                            onSelect={() => onSelectAnalysisVoicing(i)}
-                            displayMode={displayMode}
-                            showPrimeForm={true}
-                            showForte={true}
-                            degreeMap={analysisDegreeMap}
+                      <div className="toggle-stack">
+                        <label className="toggle-row">
+                          <input
+                            type="checkbox"
+                            checked={analysisShowAllVoicings}
+                            onChange={(event) =>
+                              onAnalysisShowAllVoicingsChange(event.target.checked)
+                            }
                           />
-                        ))}
-
-                        {analysisFilteredVoicings.length === 0 && (
-                          <p style={{ color: "#666", marginTop: "8px" }}>
-                            Nessun voicing disponibile con i filtri correnti.
-                          </p>
-                        )}
+                          Mostra tutte le forme di questa occorrenza sul manico
+                        </label>
                       </div>
-                    </div>
-                  </>
-                ) : (
-                  <p style={{ color: "#666", marginTop: "14px" }}>
-                    Per questa occorrenza non vengono mostrati rivolti/voicing
-                    simultanei. Sul manico vedi comunque l’insieme delle pitch
-                    classes dell’occorrenza selezionata.
-                  </p>
-                )}
+
+                      <div className="panel-stack">
+                        <div className="picker-head">
+                          <div className="section-title">Voicing / rivolti</div>
+                          <ClassBadge>{analysisFilteredVoicings.length}</ClassBadge>
+                        </div>
+
+                        <div className="results-scroll results-scroll--compact">
+                          {analysisFilteredVoicings.map((voicing, index) => (
+                            <VoicingCard
+                              key={`${analysisMode}-${getClassKey(
+                                selectedAnalysisClass
+                              )}-${activeSelectedAnalysisMemberIndex}-${index}-${voicing.positions
+                                .map((position) => `${position.stringIndex}-${position.fret}`)
+                                .join("-")}`}
+                              voicing={voicing}
+                              index={index}
+                              selected={index === activeSelectedAnalysisVoicingIndex}
+                              onSelect={() => onSelectAnalysisVoicing(index)}
+                              displayMode={displayMode}
+                              showPrimeForm={true}
+                              showForte={true}
+                              degreeMap={analysisDegreeMap}
+                            />
+                          ))}
+
+                          {analysisFilteredVoicings.length === 0 && (
+                            <p className="empty-note">
+                              Nessun voicing disponibile con i filtri correnti.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="empty-note">
+                      Per questa occorrenza non vengono mostrati voicing simultanei.
+                      Sul manico vedi comunque l&apos;insieme delle pitch classes.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </>
         )
       ) : (
         <>
-          <h2>Dettagli analitici</h2>
+          <div className="panel-header">
+            <div className="panel-header__copy">
+              <div className="eyebrow">Analisi complementare</div>
+              <h2>Dettagli analitici</h2>
+            </div>
+          </div>
 
           {activeSet && complementData && (
-            <div style={{ marginTop: "12px", lineHeight: 1.8 }}>
+            <div className="data-list">
               <div>
-                <strong>
-                  {noteName.charAt(0).toUpperCase() + noteName.slice(1)} di
-                  partenza:
-                </strong>{" "}
+                <strong>{noteName.charAt(0).toUpperCase() + noteName.slice(1)} di partenza:</strong>{" "}
                 {activeSet.forteName}
               </div>
               <div>
@@ -449,19 +313,10 @@ export default function GenericSetResultsPanel({
                 <strong>Prime form:</strong> ({activeSet.pf})
               </div>
               <div>
-                <strong>Vettore intervallare:</strong> ⟨
-                {activeSet.iv.split("").join(",")}⟩
+                <strong>Vettore intervallare:</strong> ⟨{activeSet.iv.split("").join(",")}⟩
               </div>
 
-              <div
-                style={{
-                  marginTop: "18px",
-                  padding: "12px",
-                  borderRadius: "12px",
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
+              <div className="complement-card">
                 <div>
                   <strong>{complementName}:</strong> {complementData.forte}
                 </div>
@@ -470,7 +325,8 @@ export default function GenericSetResultsPanel({
                 </div>
                 <div>
                   <strong>Vettore intervallare:</strong> ⟨
-                  {complementData.iv.split("").join(",")}⟩
+                  {complementData.iv.split("").join(",")}
+                  ⟩
                 </div>
                 <div>
                   <strong>Pitch classes:</strong>{" "}

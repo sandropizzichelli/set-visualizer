@@ -163,27 +163,27 @@ export default function GenericSetPage({
       const parseKey = (key) => {
         const [cardinality, rest] = key.split("-");
         const isZ = rest.startsWith("Z");
-        const number = parseInt(rest.replace("Z", ""), 10);
+        const number = Number.parseInt(rest.replace("Z", ""), 10);
         return {
-          cardinality: parseInt(cardinality, 10),
+          cardinality: Number.parseInt(cardinality, 10),
           isZ,
           number,
         };
       };
 
-      const A = parseKey(a);
-      const B = parseKey(b);
+      const first = parseKey(a);
+      const second = parseKey(b);
 
-      if (A.cardinality !== B.cardinality) {
-        return A.cardinality - B.cardinality;
+      if (first.cardinality !== second.cardinality) {
+        return first.cardinality - second.cardinality;
       }
 
-      if (A.number !== B.number) {
-        return A.number - B.number;
+      if (first.number !== second.number) {
+        return first.number - second.number;
       }
 
-      if (A.isZ !== B.isZ) {
-        return A.isZ ? 1 : -1;
+      if (first.isZ !== second.isZ) {
+        return first.isZ ? 1 : -1;
       }
 
       return a.localeCompare(b);
@@ -192,16 +192,16 @@ export default function GenericSetPage({
 
   const subsetCardinalityOptions = useMemo(() => {
     const options = [];
-    for (let n = 3; n <= noteCount - 1; n++) {
-      options.push(n);
+    for (let cardinality = 3; cardinality <= noteCount - 1; cardinality += 1) {
+      options.push(cardinality);
     }
     return options;
   }, [noteCount]);
 
   const supersetCardinalityOptions = useMemo(() => {
     const options = [];
-    for (let n = noteCount + 1; n <= 12; n++) {
-      options.push(n);
+    for (let cardinality = noteCount + 1; cardinality <= 12; cardinality += 1) {
+      options.push(cardinality);
     }
     return options;
   }, [noteCount]);
@@ -212,18 +212,12 @@ export default function GenericSetPage({
     if (!setDataRaw) return null;
 
     const basePcs = parsePfString(setDataRaw.pf);
-    const transformedPcs = transformPcs(
-      basePcs,
-      transformMode,
-      transformAmount
-    );
-
+    const transformedPcs = transformPcs(basePcs, transformMode, transformAmount);
     const transformedPrimeForm = transformOrderedPrimeForm(
       basePcs,
       transformMode,
       transformAmount
     );
-
     const degreeMap = makeDegreeMapFromPrimeForm(
       basePcs,
       transformMode,
@@ -250,8 +244,8 @@ export default function GenericSetPage({
 
   const rawVoicings = useMemo(() => {
     if (!activeSet || showComplement) return [];
-    return findVoicingFn(activeSet.pcs, maxSpan).map((v) => ({
-      ...v,
+    return findVoicingFn(activeSet.pcs, maxSpan).map((voicing) => ({
+      ...voicing,
       primeForm: activeSet.primeForm,
       forteName: activeSet.forteName,
     }));
@@ -261,19 +255,21 @@ export default function GenericSetPage({
     let list = [...rawVoicings];
 
     if (excludeOpenStrings) {
-      list = list.filter((v) => v.positions.every((p) => p.fret > 0));
+      list = list.filter((voicing) => voicing.positions.every((position) => position.fret > 0));
     }
 
     if (groupFilter !== "all") {
-      list = list.filter((v) => v.stringPattern === groupFilter);
+      list = list.filter((voicing) => voicing.stringPattern === groupFilter);
     }
 
     list = filterByBassDegree(list, bassFilter, activeSet?.degreeMap);
 
-    list.sort((a, b) => {
-      if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
-      if (a.span !== b.span) return a.span - b.span;
-      return a.stringPattern.localeCompare(b.stringPattern);
+    list.sort((first, second) => {
+      if (first.lowestFret !== second.lowestFret) {
+        return first.lowestFret - second.lowestFret;
+      }
+      if (first.span !== second.span) return first.span - second.span;
+      return first.stringPattern.localeCompare(second.stringPattern);
     });
 
     return list;
@@ -319,9 +315,8 @@ export default function GenericSetPage({
   const selectedAnalysisClass = useMemo(() => {
     if (analysisMode === "voicings" || !analysisClasses.length) return null;
     return (
-      analysisClasses.find(
-        (item) => getClassKey(item) === selectedAnalysisClassKey
-      ) || analysisClasses[0]
+      analysisClasses.find((item) => getClassKey(item) === selectedAnalysisClassKey) ||
+      analysisClasses[0]
     );
   }, [analysisMode, analysisClasses, selectedAnalysisClassKey]);
 
@@ -347,8 +342,8 @@ export default function GenericSetPage({
     if (!selectedAnalysisMember) return null;
 
     const map = new Map();
-    selectedAnalysisMember.forEach((pc, idx) => {
-      map.set(pc, idx + 1);
+    selectedAnalysisMember.forEach((pc, index) => {
+      map.set(pc, index + 1);
     });
 
     return map;
@@ -362,8 +357,8 @@ export default function GenericSetPage({
   const analysisRawVoicings = useMemo(() => {
     if (!selectedAnalysisMember || !analysisVoicingFinder) return [];
 
-    return analysisVoicingFinder(selectedAnalysisMember, maxSpan).map((v) => ({
-      ...v,
+    return analysisVoicingFinder(selectedAnalysisMember, maxSpan).map((voicing) => ({
+      ...voicing,
       primeForm: selectedAnalysisMemberPrimeForm,
       forteName: selectedAnalysisClass?.forteName || null,
     }));
@@ -379,15 +374,17 @@ export default function GenericSetPage({
     let list = [...analysisRawVoicings];
 
     if (excludeOpenStrings) {
-      list = list.filter((v) => v.positions.every((p) => p.fret > 0));
+      list = list.filter((voicing) => voicing.positions.every((position) => position.fret > 0));
     }
 
     list = filterByBassDegree(list, analysisBassFilter, analysisDegreeMap);
 
-    list.sort((a, b) => {
-      if (a.lowestFret !== b.lowestFret) return a.lowestFret - b.lowestFret;
-      if (a.span !== b.span) return a.span - b.span;
-      return a.stringPattern.localeCompare(b.stringPattern);
+    list.sort((first, second) => {
+      if (first.lowestFret !== second.lowestFret) {
+        return first.lowestFret - second.lowestFret;
+      }
+      if (first.span !== second.span) return first.span - second.span;
+      return first.stringPattern.localeCompare(second.stringPattern);
     });
 
     return list;
@@ -417,8 +414,8 @@ export default function GenericSetPage({
   const selectedVoicing = filteredVoicings[activeSelectedVoicingIndex] || null;
 
   const availableGroupPatterns = useMemo(() => {
-    const set = new Set(rawVoicings.map((v) => v.stringPattern));
-    return [...set].sort();
+    const patterns = new Set(rawVoicings.map((voicing) => voicing.stringPattern));
+    return [...patterns].sort();
   }, [rawVoicings]);
 
   const resetPrimaryVoicingSelection = ({ hideAll = true } = {}) => {
@@ -533,10 +530,10 @@ export default function GenericSetPage({
   };
 
   const canRenderAnalysisVoicings =
-    !!selectedAnalysisMember &&
+    Boolean(selectedAnalysisMember) &&
     selectedAnalysisMember.length >= 3 &&
     selectedAnalysisMember.length <= 6 &&
-    !!analysisVoicingFinder;
+    Boolean(analysisVoicingFinder);
 
   useEffect(() => {
     replaceSearchParams((params) => {
@@ -550,23 +547,11 @@ export default function GenericSetPage({
 
       setSearchParam(params, "subset", subsetTargetCardinality);
       setSearchParam(params, "superset", supersetTargetCardinality);
-      setSearchParam(
-        params,
-        "group",
-        groupFilter === "all" ? null : groupFilter
-      );
-      setSearchParam(
-        params,
-        "view",
-        displayMode === "notes" ? null : displayMode
-      );
+      setSearchParam(params, "group", groupFilter === "all" ? null : groupFilter);
+      setSearchParam(params, "view", displayMode === "notes" ? null : displayMode);
       setSearchParam(params, "bass", bassFilter === "all" ? null : bassFilter);
 
-      setSearchParam(
-        params,
-        "transform",
-        transformMode === "base" ? null : transformMode
-      );
+      setSearchParam(params, "transform", transformMode === "base" ? null : transformMode);
       setSearchParam(
         params,
         "amount",
@@ -588,11 +573,7 @@ export default function GenericSetPage({
         "aclass",
         selectedAnalysisClass ? getClassKey(selectedAnalysisClass) : null
       );
-      setSearchParam(
-        params,
-        "amember",
-        activeSelectedAnalysisMemberIndex || null
-      );
+      setSearchParam(params, "amember", activeSelectedAnalysisMemberIndex || null);
       setSearchParam(
         params,
         "abass",
@@ -628,15 +609,8 @@ export default function GenericSetPage({
   ]);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f1f5f9",
-        padding: "24px",
-        color: "#111",
-      }}
-    >
-      <div style={{ maxWidth: "1500px", margin: "0 auto" }}>
+    <div className="set-page">
+      <div className="set-page__inner">
         <GenericSetControlsPanel
           title={title}
           description={description}
@@ -677,13 +651,7 @@ export default function GenericSetPage({
           onExcludeOpenStringsChange={handleExcludeOpenStringsChange}
         />
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.1fr 0.9fr",
-            gap: "24px",
-          }}
-        >
+        <div className="set-page__grid">
           <GenericSetFretboardPanel
             showComplement={showComplement}
             analysisMode={analysisMode}
@@ -728,9 +696,7 @@ export default function GenericSetPage({
             analysisShowAllVoicings={analysisShowAllVoicings}
             onAnalysisShowAllVoicingsChange={setAnalysisShowAllVoicings}
             analysisFilteredVoicings={analysisFilteredVoicings}
-            activeSelectedAnalysisVoicingIndex={
-              activeSelectedAnalysisVoicingIndex
-            }
+            activeSelectedAnalysisVoicingIndex={activeSelectedAnalysisVoicingIndex}
             onSelectAnalysisVoicing={handleSelectAnalysisVoicing}
             analysisDegreeMap={analysisDegreeMap}
             complementName={complementName}

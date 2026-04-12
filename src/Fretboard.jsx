@@ -1,6 +1,7 @@
 import React from "react";
 import { STRINGS, DISPLAY_STRINGS, FRET_COUNT, PC_TO_NAME } from "./setData";
 import { pcAt } from "./setUtils";
+
 export default function Fretboard({
   voicing,
   allTargetPcs,
@@ -14,141 +15,94 @@ export default function Fretboard({
   const selectedMap = new Map();
 
   if (showAll && allVoicings) {
-    allVoicings.forEach((v) => {
-      v.positions.forEach((p) => {
-        const key = `${p.stringIndex}-${p.fret}`;
+    allVoicings.forEach((currentVoicing) => {
+      currentVoicing.positions.forEach((position) => {
+        const key = `${position.stringIndex}-${position.fret}`;
         if (!selectedMap.has(key)) {
           selectedMap.set(key, {
-            pc: p.pc,
-            degree: degreeMap?.get(p.pc) ?? null,
+            pc: position.pc,
+            degree: degreeMap?.get(position.pc) ?? null,
           });
         }
       });
     });
   } else if (voicing) {
-    voicing.positions.forEach((p) => {
-      const key = `${p.stringIndex}-${p.fret}`;
+    voicing.positions.forEach((position) => {
+      const key = `${position.stringIndex}-${position.fret}`;
       selectedMap.set(key, {
-        pc: p.pc,
-        degree: degreeMap?.get(p.pc) ?? null,
+        pc: position.pc,
+        degree: degreeMap?.get(position.pc) ?? null,
       });
     });
   }
 
   const visibleStrings = DISPLAY_STRINGS.filter((displayString) => {
-    const sIdx = STRINGS.findIndex((s) => s.name === displayString.name);
+    const stringIndex = STRINGS.findIndex((stringItem) => stringItem.name === displayString.name);
     if (!hideEmptyStrings) return true;
 
     if (highlightAllAsActive) {
-      return Array.from({ length: FRET_COUNT + 1 }, (_, fret) =>
-        pcAt(sIdx, fret)
-      ).some((pc) => allTargetPcs.includes(pc));
+      return Array.from({ length: FRET_COUNT + 1 }, (_, fret) => pcAt(stringIndex, fret)).some(
+        (pc) => allTargetPcs.includes(pc)
+      );
     }
 
     return (
-      voicing?.positions.some((p) => p.stringIndex === sIdx) ||
+      voicing?.positions.some((position) => position.stringIndex === stringIndex) ||
       (showAll &&
-        allVoicings?.some((v) =>
-          v.positions.some((p) => p.stringIndex === sIdx)
+        allVoicings?.some((currentVoicing) =>
+          currentVoicing.positions.some((position) => position.stringIndex === stringIndex)
         ))
     );
   });
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <div
-        style={{
-          display: "inline-block",
-          padding: "12px",
-          background: "white",
-          border: "1px solid #ddd",
-          borderRadius: "12px",
-        }}
-      >
+    <div className="fretboard-scroll">
+      <div className="fretboard-board">
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `52px repeat(${FRET_COUNT + 1}, 46px)`,
-            gap: "4px",
-          }}
+          className="fretboard-grid"
+          style={{ gridTemplateColumns: `56px repeat(${FRET_COUNT + 1}, 48px)` }}
         >
-          <div />
-          {Array.from({ length: FRET_COUNT + 1 }, (_, i) => (
-            <div
-              key={i}
-              style={{ textAlign: "center", fontSize: "12px", color: "#666" }}
-            >
-              {i}
+          <div className="fretboard__corner" />
+          {Array.from({ length: FRET_COUNT + 1 }, (_, fret) => (
+            <div key={fret} className="fretboard__fret-label">
+              {fret}
             </div>
           ))}
 
           {visibleStrings.map((displayString) => {
-            const sIdx = STRINGS.findIndex(
-              (s) => s.name === displayString.name
-            );
+            const stringIndex = STRINGS.findIndex((stringItem) => stringItem.name === displayString.name);
 
             return (
               <React.Fragment key={displayString.name}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {displayString.name}
-                </div>
+                <div className="fretboard__string-label">{displayString.name}</div>
 
                 {Array.from({ length: FRET_COUNT + 1 }, (_, fret) => {
-                  const pc = pcAt(sIdx, fret);
-                  const key = `${sIdx}-${fret}`;
-                  const selectedInfo = selectedMap.get(key);
+                  const pc = pcAt(stringIndex, fret);
+                  const cellKey = `${stringIndex}-${fret}`;
+                  const selectedInfo = selectedMap.get(cellKey);
                   const active =
-                    !!selectedInfo ||
+                    Boolean(selectedInfo) ||
                     (highlightAllAsActive && allTargetPcs.includes(pc));
                   const target = allTargetPcs.includes(pc);
 
-                  let bg = "white";
-                  let border = "1px solid #ddd";
-                  let color = "#111";
                   let text = "";
-
                   if (active) {
-                    bg = "#111";
-                    border = "1px solid #111";
-                    color = "white";
+                    text = selectedInfo
+                      ? displayMode === "degrees"
+                        ? String(selectedInfo.degree ?? "")
+                        : PC_TO_NAME[selectedInfo.pc]
+                      : PC_TO_NAME[pc];
+                  }
 
-                    if (selectedInfo) {
-                      text =
-                        displayMode === "degrees"
-                          ? String(selectedInfo.degree ?? "")
-                          : PC_TO_NAME[selectedInfo.pc];
-                    } else {
-                      text = PC_TO_NAME[pc];
-                    }
+                  const className = ["fretboard__cell"];
+                  if (active) {
+                    className.push("is-active");
                   } else if (target && !highlightAllAsActive) {
-                    bg = "#f3f4f6";
-                    border = "1px solid #d1d5db";
+                    className.push("is-target");
                   }
 
                   return (
-                    <div
-                      key={`${sIdx}-${fret}`}
-                      style={{
-                        width: "46px",
-                        height: "38px",
-                        borderRadius: "8px",
-                        background: bg,
-                        border,
-                        color,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                      }}
-                    >
+                    <div key={cellKey} className={className.join(" ")} title={PC_TO_NAME[pc]}>
                       {text}
                     </div>
                   );

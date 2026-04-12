@@ -20,60 +20,35 @@ export default function GenericSetFretboardPanel({
   complementData,
 }) {
   return (
-    <div
-      style={{
-        background: "white",
-        padding: "24px",
-        borderRadius: "18px",
-        border: "1px solid #ddd",
-      }}
-    >
-      <h2>Manico</h2>
+    <div className="set-panel">
+      <div className="panel-header">
+        <div className="panel-header__copy">
+          <div className="eyebrow">Spazio sul manico</div>
+          <h2>Manico</h2>
+        </div>
+        {!showComplement && activeSet && (
+          <span className="class-badge">{activeSet.transformLabel}</span>
+        )}
+      </div>
 
       {!showComplement ? (
         analysisMode === "voicings" ? (
-          <>
-            <p style={{ color: "#666" }}>
-              Le caselle grigie appartengono al {noteName} trasformato. Le
-              caselle nere mostrano la forma selezionata, oppure tutte le forme
-              se l’opzione è attiva.
+          <div className="panel-stack">
+            <p className="helper-text">
+              Le caselle ambrate appartengono al {noteName} trasformato. Le caselle
+              evidenziate mostrano la forma selezionata, oppure tutte le forme se
+              l&apos;opzione è attiva.
             </p>
 
             {activeSet && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Trasformazione attiva: {activeSet.transformLabel}
-              </div>
-            )}
-
-            {activeSet && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Prime form del {noteName}: [{activeSet.primeForm.join(",")}]
-                {" | "}trasformata ordinata: [
-                {activeSet.transformedPrimeForm.join(",")}]
-              </div>
-            )}
-
-            {activeSet && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Nome Forte del {noteName}: {activeSet.forteName}
+              <div className="panel-stack">
+                <div className="info-note">
+                  Prime form del {noteName}: [{activeSet.primeForm.join(",")}] |
+                  trasformata ordinata: [{activeSet.transformedPrimeForm.join(",")}]
+                </div>
+                <div className="info-note">
+                  Nome Forte del {noteName}: {activeSet.forteName}
+                </div>
               </div>
             )}
 
@@ -85,74 +60,51 @@ export default function GenericSetFretboardPanel({
               displayMode={displayMode}
               degreeMap={activeSet?.degreeMap}
             />
-          </>
+          </div>
         ) : (
-          <>
-            <p style={{ color: "#666" }}>
-              Seleziona una classe a destra. Il manico mostrerà la singola
-              occorrenza concreta selezionata e, quando possibile, i suoi
-              voicing/rivolti.
+          <div className="panel-stack">
+            <p className="helper-text">
+              Seleziona una classe a destra. Il manico mostra l&apos;occorrenza concreta
+              scelta e, quando possibile, i suoi voicing o rivolti.
             </p>
 
             {selectedAnalysisClass && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Classe selezionata: {selectedAnalysisClass.forteName || "n.d."}
-                {" | "}PF [{selectedAnalysisClass.primeForm.join(",")}]
+              <div className="info-note">
+                Classe selezionata: {selectedAnalysisClass.forteName || "n.d."} | PF
+                [{selectedAnalysisClass.primeForm.join(",")}]
               </div>
             )}
 
             {selectedAnalysisMember && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
+              <div className="info-note">
                 Occorrenza concreta: [{selectedAnalysisMember.join(",")}]
               </div>
             )}
 
             {selectedAnalysisMember && !canRenderAnalysisVoicings && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#555",
-                  marginBottom: "10px",
-                }}
-              >
-                Cardinalità {selectedAnalysisMember.length}: sul manico vengono
-                mostrate le pitch classes dell’occorrenza, non un voicing
-                simultaneo.
+              <div className="info-note">
+                Cardinalità {selectedAnalysisMember.length}: sul manico vengono mostrate
+                le pitch classes dell&apos;occorrenza, non un voicing simultaneo.
               </div>
             )}
 
             <Fretboard
               voicing={canRenderAnalysisVoicings ? selectedAnalysisVoicing : null}
               allTargetPcs={selectedAnalysisMember || []}
-              allVoicings={
-                canRenderAnalysisVoicings ? analysisFilteredVoicings : []
-              }
-              showAll={
-                canRenderAnalysisVoicings ? analysisShowAllVoicings : false
-              }
+              allVoicings={canRenderAnalysisVoicings ? analysisFilteredVoicings : []}
+              showAll={canRenderAnalysisVoicings ? analysisShowAllVoicings : false}
               displayMode={displayMode}
               degreeMap={analysisDegreeMap}
             />
-          </>
+          </div>
         )
       ) : (
-        <>
-          <p style={{ color: "#666" }}>
-            Le caselle nere mostrano il complementare della trasformazione
-            attiva del {noteName}.
+        <div className="panel-stack">
+          <p className="helper-text">
+            Le caselle evidenziate mostrano il complementare della trasformazione attiva
+            del {noteName}.
           </p>
+
           <Fretboard
             voicing={null}
             allTargetPcs={complementData ? complementData.pcs : []}
@@ -162,7 +114,7 @@ export default function GenericSetFretboardPanel({
             degreeMap={null}
             highlightAllAsActive={true}
           />
-        </>
+        </div>
       )}
     </div>
   );
