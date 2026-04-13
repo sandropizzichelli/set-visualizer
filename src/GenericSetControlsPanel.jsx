@@ -38,6 +38,10 @@ export default function GenericSetControlsPanel({
   onSelectedIntervalVectorChange,
   intervalVectorOptions,
   intervalVectorMatches,
+  maxSpan,
+  onMaxSpanChange,
+  fretboardViewMode,
+  onFretboardViewModeChange,
   showComplement,
   noteName,
   onShowComplementChange,
@@ -202,6 +206,25 @@ export default function GenericSetControlsPanel({
 
         <div className="control-card">
           <div className="control-card__stack">
+            <SectionTitle>Allargamento tasti</SectionTitle>
+            <div className="range-caption">
+              <span>Distanza massima tra il primo e l'ultimo tasto del voicing</span>
+              <strong className="range-value">{maxSpan} tasti</strong>
+            </div>
+            <input
+              type="range"
+              min="2"
+              max="5"
+              step="1"
+              value={maxSpan}
+              onChange={(event) => onMaxSpanChange(Number(event.target.value))}
+              className="control-range"
+            />
+          </div>
+        </div>
+
+        <div className="control-card">
+          <div className="control-card__stack">
             <SectionTitle>Modalità di vista</SectionTitle>
             <div className="segmented-row">
               <PillButton
@@ -222,6 +245,26 @@ export default function GenericSetControlsPanel({
 
         {!showComplement && (
           <>
+            <div className="control-card">
+              <div className="control-card__stack">
+                <SectionTitle>Manico</SectionTitle>
+                <div className="segmented-row">
+                  <PillButton
+                    active={fretboardViewMode === "voicing"}
+                    onClick={() => onFretboardViewModeChange("voicing")}
+                  >
+                    Voicing
+                  </PillButton>
+                  <PillButton
+                    active={fretboardViewMode === "prime"}
+                    onClick={() => onFretboardViewModeChange("prime")}
+                  >
+                    Forma primaria
+                  </PillButton>
+                </div>
+              </div>
+            </div>
+
             <div className="control-card control-card--wide">
               <div className="control-card__stack">
                 <SectionTitle>Analisi insiemistica</SectionTitle>
@@ -357,14 +400,22 @@ export default function GenericSetControlsPanel({
 
                 <div className="control-card control-card--wide">
                   <div className="toggle-stack">
-                    <label className="toggle-row">
-                      <input
-                        type="checkbox"
-                        checked={showAll}
-                        onChange={(event) => onShowAllChange(event.target.checked)}
-                      />
-                      Mostra tutte le forme uniche insieme sul manico
-                    </label>
+                    {fretboardViewMode === "voicing" ? (
+                      <label className="toggle-row">
+                        <input
+                          type="checkbox"
+                          checked={showAll}
+                          onChange={(event) => onShowAllChange(event.target.checked)}
+                        />
+                        Mostra tutte le forme uniche insieme sul manico
+                      </label>
+                    ) : (
+                      <p className="helper-text">
+                        In `Forma primaria` il manico mostra una disposizione lineare
+                        e compatta della prime form della classe attiva, indipendente
+                        dai voicing trovati.
+                      </p>
+                    )}
 
                     <label className="toggle-row">
                       <input

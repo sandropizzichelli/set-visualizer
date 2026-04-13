@@ -104,10 +104,15 @@ export default function GenericSetFretboardPanel({
   browseMode,
   showComplement,
   analysisMode,
+  fretboardViewMode,
   noteName,
   activeSet,
   selectedVoicing,
   filteredVoicings,
+  primaryFormVoicing,
+  primaryFormDegreeMap,
+  primaryFormIntervalMap,
+  primaryFormIntervalLegend,
   showAll,
   displayMode,
   intervalVectorFamilyClasses,
@@ -116,12 +121,18 @@ export default function GenericSetFretboardPanel({
   onToggleIntervalClass,
   onClearIntervalClassFilter,
   filteredPrimaryTargetPcs,
+  filteredPrimaryFormTargetPcs,
   selectedAnalysisClass,
   selectedAnalysisMember,
   filteredAnalysisTargetPcs,
+  filteredAnalysisPrimaryFormTargetPcs,
   canRenderAnalysisVoicings,
   selectedAnalysisVoicing,
   analysisFilteredVoicings,
+  analysisPrimaryFormVoicing,
+  analysisPrimaryFormDegreeMap,
+  analysisPrimaryFormIntervalMap,
+  analysisPrimaryFormIntervalLegend,
   analysisShowAllVoicings,
   analysisDegreeMap,
   analysisIntervalMap,
@@ -130,6 +141,10 @@ export default function GenericSetFretboardPanel({
   complementData,
 }) {
   const showIntervalLegend = browseMode === "iv" || displayMode === "intervals";
+  const showingPrimaryForm = fretboardViewMode === "prime";
+  const canRenderAnalysisPrimaryForm =
+    Boolean(selectedAnalysisClass?.primeForm?.length) &&
+    Boolean(analysisPrimaryFormVoicing);
 
   return (
     <div className="set-panel">
@@ -147,9 +162,9 @@ export default function GenericSetFretboardPanel({
         analysisMode === "voicings" ? (
           <div className="panel-stack">
             <p className="helper-text">
-              Le caselle attenuate appartengono al {noteName} trasformato. Le caselle
-              evidenziate mostrano la forma selezionata, oppure tutte le forme uniche se
-              l&apos;opzione e attiva.
+              {showingPrimaryForm
+                ? "Il manico mostra una disposizione lineare e compatta della prime form della classe attiva: e una lettura teorica della set-class, non un voicing generato."
+                : `Le caselle attenuate appartengono al ${noteName} trasformato. Le caselle evidenziate mostrano la forma selezionata, oppure tutte le forme uniche se l'opzione e attiva.`}
             </p>
 
             {activeSet && (
@@ -172,8 +187,10 @@ export default function GenericSetFretboardPanel({
 
             {showIntervalLegend && activeSet && (
               <IntervalLegend
-                title="Mappa intervallare"
-                legend={activeSet.intervalLegend}
+                title={
+                  showingPrimaryForm ? "Mappa intervallare della forma primaria" : "Mappa intervallare"
+                }
+                legend={showingPrimaryForm ? primaryFormIntervalLegend : activeSet.intervalLegend}
                 breakdown={activeSet.intervalClassBreakdown}
                 vector={activeSet.iv}
                 selectedIntervalClasses={selectedIntervalClasses}
@@ -184,27 +201,38 @@ export default function GenericSetFretboardPanel({
 
             {selectedIntervalClasses.length > 0 && !showAll && (
               <div className="info-note info-note--accent">
-                Le linee sul manico collegano le note della forma selezionata che
+                Le linee sul manico collegano le note della{" "}
+                {showingPrimaryForm ? "forma primaria" : "forma selezionata"} che
                 producono gli intervalli `ic{selectedIntervalClasses.join(", ic")}`.
               </div>
             )}
 
             <Fretboard
-              voicing={selectedVoicing}
-              allTargetPcs={filteredPrimaryTargetPcs}
-              allVoicings={filteredVoicings}
-              showAll={showAll}
+              voicing={showingPrimaryForm ? primaryFormVoicing : selectedVoicing}
+              allTargetPcs={
+                showingPrimaryForm
+                  ? filteredPrimaryFormTargetPcs
+                  : filteredPrimaryTargetPcs
+              }
+              allVoicings={showingPrimaryForm ? [] : filteredVoicings}
+              showAll={showingPrimaryForm ? false : showAll}
               displayMode={displayMode}
-              degreeMap={activeSet?.degreeMap}
-              intervalMap={activeSet?.intervalMap}
+              degreeMap={
+                showingPrimaryForm ? primaryFormDegreeMap : activeSet?.degreeMap
+              }
+              intervalMap={
+                showingPrimaryForm ? primaryFormIntervalMap : activeSet?.intervalMap
+              }
               selectedIntervalClasses={selectedIntervalClasses}
+              showTargetMap={!showingPrimaryForm}
             />
           </div>
         ) : (
           <div className="panel-stack">
             <p className="helper-text">
-              Seleziona una classe a destra. Il manico mostra l&apos;occorrenza concreta
-              scelta e, quando possibile, i suoi voicing o rivolti.
+              {showingPrimaryForm
+                ? "Seleziona una classe a destra. Il manico mostra una disposizione lineare e compatta della sua prime form."
+                : "Seleziona una classe a destra. Il manico mostra l&apos;occorrenza concreta scelta e, quando possibile, i suoi voicing o rivolti."}
             </p>
 
             {selectedAnalysisClass && (
@@ -222,8 +250,16 @@ export default function GenericSetFretboardPanel({
 
             {showIntervalLegend && selectedAnalysisClass && (
               <IntervalLegend
-                title="Profilo intervallare dell'occorrenza"
-                legend={analysisIntervalLegend}
+                title={
+                  showingPrimaryForm
+                    ? "Profilo intervallare della forma primaria"
+                    : "Profilo intervallare dell'occorrenza"
+                }
+                legend={
+                  showingPrimaryForm
+                    ? analysisPrimaryFormIntervalLegend
+                    : analysisIntervalLegend
+                }
                 breakdown={analysisIntervalClassBreakdown}
                 vector={selectedAnalysisClass.iv}
                 selectedIntervalClasses={selectedIntervalClasses}
@@ -241,14 +277,43 @@ export default function GenericSetFretboardPanel({
             )}
 
             <Fretboard
-              voicing={canRenderAnalysisVoicings ? selectedAnalysisVoicing : null}
-              allTargetPcs={filteredAnalysisTargetPcs}
-              allVoicings={canRenderAnalysisVoicings ? analysisFilteredVoicings : []}
-              showAll={canRenderAnalysisVoicings ? analysisShowAllVoicings : false}
+              voicing={
+                showingPrimaryForm
+                  ? canRenderAnalysisPrimaryForm
+                    ? analysisPrimaryFormVoicing
+                    : null
+                  : canRenderAnalysisVoicings
+                    ? selectedAnalysisVoicing
+                  : null
+              }
+              allTargetPcs={
+                showingPrimaryForm
+                  ? filteredAnalysisPrimaryFormTargetPcs
+                  : filteredAnalysisTargetPcs
+              }
+              allVoicings={
+                showingPrimaryForm || !canRenderAnalysisVoicings
+                  ? []
+                  : analysisFilteredVoicings
+              }
+              showAll={
+                showingPrimaryForm || !canRenderAnalysisVoicings
+                  ? false
+                  : analysisShowAllVoicings
+              }
               displayMode={displayMode}
-              degreeMap={analysisDegreeMap}
-              intervalMap={analysisIntervalMap}
+              degreeMap={
+                showingPrimaryForm
+                  ? analysisPrimaryFormDegreeMap
+                  : analysisDegreeMap
+              }
+              intervalMap={
+                showingPrimaryForm
+                  ? analysisPrimaryFormIntervalMap
+                  : analysisIntervalMap
+              }
               selectedIntervalClasses={selectedIntervalClasses}
+              showTargetMap={!showingPrimaryForm}
             />
           </div>
         )

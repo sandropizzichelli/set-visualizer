@@ -15,6 +15,7 @@ import {
   findTetrachordVoicings,
   findPentachordVoicings,
   findHexachordVoicings,
+  buildPrimaryFormVoicing,
   groupVoicingsByStructure,
 } from "./setUtils";
 import GenericSetControlsPanel from "./GenericSetControlsPanel";
@@ -42,7 +43,9 @@ const ANALYSIS_MODES = ["voicings", "subsets", "supersets"];
 const DISPLAY_MODES = ["notes", "degrees", "intervals"];
 const TRANSFORM_MODES = ["base", "tn", "tni"];
 const BROWSE_MODES = ["forte", "iv"];
-const FIXED_MAX_SPAN = DEFAULT_MAX_SPAN;
+const FRETBOARD_VIEW_MODES = ["voicing", "prime"];
+const MIN_MAX_SPAN = 2;
+const MAX_MAX_SPAN = 5;
 
 function readBassFilter(params, name, noteCount) {
   const value = params.get(name);
@@ -102,6 +105,16 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
       intervalVectorOptions
     ),
     selected: readIntegerParam(params, "voicing", 0, { min: 0 }),
+    maxSpan: readIntegerParam(params, "span", DEFAULT_MAX_SPAN, {
+      min: MIN_MAX_SPAN,
+      max: MAX_MAX_SPAN,
+    }),
+    fretboardViewMode: readEnumParam(
+      params,
+      "neck",
+      FRETBOARD_VIEW_MODES,
+      "voicing"
+    ),
     showAll: readBooleanParam(params, "showAll", false),
     showComplement: readBooleanParam(params, "complement", false),
     excludeOpenStrings: readBooleanParam(params, "excludeOpen", false),
@@ -167,6 +180,10 @@ export default function GenericSetPage({
     initialUrlState.selectedIntervalVector
   );
   const [selected, setSelected] = useState(initialUrlState.selected);
+  const [maxSpan, setMaxSpan] = useState(initialUrlState.maxSpan);
+  const [fretboardViewMode, setFretboardViewMode] = useState(
+    initialUrlState.fretboardViewMode
+  );
   const [showAll, setShowAll] = useState(initialUrlState.showAll);
   const [showComplement, setShowComplement] = useState(
     initialUrlState.showComplement
@@ -365,12 +382,12 @@ export default function GenericSetPage({
 
   const rawVoicings = useMemo(() => {
     if (!activeSet || showComplement) return [];
-    return findVoicingFn(activeSet.pcs, FIXED_MAX_SPAN).map((voicing) => ({
+    return findVoicingFn(activeSet.pcs, maxSpan).map((voicing) => ({
       ...voicing,
       primeForm: activeSet.primeForm,
       forteName: activeSet.forteName,
     }));
-  }, [activeSet, showComplement, findVoicingFn]);
+  }, [activeSet, showComplement, findVoicingFn, maxSpan]);
 
   const filteredVoicingOccurrences = useMemo(() => {
     let list = [...rawVoicings];
@@ -394,6 +411,36 @@ export default function GenericSetPage({
   );
 
   const filteredVoicingOccurrenceCount = filteredVoicingOccurrences.length;
+
+  const primaryFormVoicing = useMemo(
+    () => buildPrimaryFormVoicing(activeSet?.primeForm || []),
+    [activeSet]
+  );
+
+  const primaryFormDegreeMap = useMemo(() => {
+    if (!activeSet?.primeForm?.length) return null;
+
+    const map = new Map();
+    activeSet.primeForm.forEach((pc, index) => {
+      map.set(pc, index + 1);
+    });
+    return map;
+  }, [activeSet]);
+
+  const primaryFormIntervalMap = useMemo(
+    () => buildIntervalMapFromOrderedPcs(activeSet?.primeForm || []),
+    [activeSet]
+  );
+
+  const primaryFormIntervalLegend = useMemo(
+    () => buildIntervalLegend(activeSet?.primeForm || []),
+    [activeSet]
+  );
+
+  const primaryFormIntervalClassPitchClassMap = useMemo(
+    () => buildIntervalClassPitchClassMap(activeSet?.primeForm || []),
+    [activeSet]
+  );
 
   const subsetClasses = useMemo(() => {
     if (!activeSet || showComplement) return [];
@@ -513,6 +560,15 @@ export default function GenericSetPage({
     [activeSet, activeSelectedIntervalClasses]
   );
 
+  const filteredPrimaryFormTargetPcs = useMemo(
+    () =>
+      buildFilteredPitchClasses(
+        primaryFormIntervalClassPitchClassMap,
+        activeSelectedIntervalClasses
+      ) || activeSet?.primeForm || [],
+    [primaryFormIntervalClassPitchClassMap, activeSelectedIntervalClasses, activeSet]
+  );
+
   const filteredAnalysisTargetPcs = useMemo(
     () =>
       buildFilteredPitchClasses(
@@ -534,7 +590,7 @@ export default function GenericSetPage({
   const analysisRawVoicings = useMemo(() => {
     if (!selectedAnalysisMember || !analysisVoicingFinder) return [];
 
-    return analysisVoicingFinder(selectedAnalysisMember, FIXED_MAX_SPAN).map((voicing) => ({
+    return analysisVoicingFinder(selectedAnalysisMember, maxSpan).map((voicing) => ({
       ...voicing,
       primeForm: selectedAnalysisMemberPrimeForm,
       forteName: selectedAnalysisClass?.forteName || null,
@@ -544,6 +600,7 @@ export default function GenericSetPage({
     analysisVoicingFinder,
     selectedAnalysisMemberPrimeForm,
     selectedAnalysisClass,
+    maxSpan,
   ]);
 
   const analysisFilteredVoicingOccurrences = useMemo(() => {
@@ -569,6 +626,49 @@ export default function GenericSetPage({
   );
 
   const analysisVoicingOccurrenceCount = analysisFilteredVoicingOccurrences.length;
+
+  const analysisPrimaryFormVoicing = useMemo(
+    () => buildPrimaryFormVoicing(selectedAnalysisClass?.primeForm || []),
+    [selectedAnalysisClass]
+  );
+
+  const analysisPrimaryFormDegreeMap = useMemo(() => {
+    if (!selectedAnalysisClass?.primeForm?.length) return null;
+
+    const map = new Map();
+    selectedAnalysisClass.primeForm.forEach((pc, index) => {
+      map.set(pc, index + 1);
+    });
+    return map;
+  }, [selectedAnalysisClass]);
+
+  const analysisPrimaryFormIntervalMap = useMemo(
+    () => buildIntervalMapFromOrderedPcs(selectedAnalysisClass?.primeForm || []),
+    [selectedAnalysisClass]
+  );
+
+  const analysisPrimaryFormIntervalLegend = useMemo(
+    () => buildIntervalLegend(selectedAnalysisClass?.primeForm || []),
+    [selectedAnalysisClass]
+  );
+
+  const analysisPrimaryFormIntervalClassPitchClassMap = useMemo(
+    () => buildIntervalClassPitchClassMap(selectedAnalysisClass?.primeForm || []),
+    [selectedAnalysisClass]
+  );
+
+  const filteredAnalysisPrimaryFormTargetPcs = useMemo(
+    () =>
+      buildFilteredPitchClasses(
+        analysisPrimaryFormIntervalClassPitchClassMap,
+        activeSelectedIntervalClasses
+      ) || selectedAnalysisClass?.primeForm || [],
+    [
+      analysisPrimaryFormIntervalClassPitchClassMap,
+      selectedAnalysisClass,
+      activeSelectedIntervalClasses,
+    ]
+  );
 
   const activeSelectedAnalysisVoicingIndex = useMemo(() => {
     if (!analysisFilteredVoicings.length) return 0;
@@ -632,6 +732,20 @@ export default function GenericSetPage({
     setTransformAmount(amount);
     resetPrimaryVoicingSelection();
     resetAnalysisClassSelection();
+  };
+
+  const handleMaxSpanChange = (value) => {
+    setMaxSpan(value);
+    resetPrimaryVoicingSelection();
+    resetAnalysisVoicingSelection();
+  };
+
+  const handleFretboardViewModeChange = (mode) => {
+    setFretboardViewMode(mode);
+    if (mode === "prime") {
+      setShowAll(false);
+      setAnalysisShowAllVoicings(false);
+    }
   };
 
   const handleBrowseModeChange = (mode) => {
@@ -791,7 +905,12 @@ export default function GenericSetPage({
         "iv",
         browseMode === "iv" ? selectedIntervalVector : null
       );
-      params.delete("span");
+      setSearchParam(params, "span", maxSpan === DEFAULT_MAX_SPAN ? null : maxSpan);
+      setSearchParam(
+        params,
+        "neck",
+        fretboardViewMode === "voicing" ? null : fretboardViewMode
+      );
       setSearchParam(params, "analysis", analysisMode);
 
       setBooleanSearchParam(params, "showAll", showAll);
@@ -850,6 +969,8 @@ export default function GenericSetPage({
     browseMode,
     activeSelectedForte,
     selectedIntervalVector,
+    maxSpan,
+    fretboardViewMode,
     analysisMode,
     showAll,
     showComplement,
@@ -889,6 +1010,10 @@ export default function GenericSetPage({
           onSelectedIntervalVectorChange={handleSelectedIntervalVectorChange}
           intervalVectorOptions={intervalVectorOptions}
           intervalVectorMatches={intervalVectorMatches}
+          maxSpan={maxSpan}
+          onMaxSpanChange={handleMaxSpanChange}
+          fretboardViewMode={fretboardViewMode}
+          onFretboardViewModeChange={handleFretboardViewModeChange}
           showComplement={showComplement}
           noteName={noteName}
           onShowComplementChange={setShowComplement}
@@ -923,11 +1048,16 @@ export default function GenericSetPage({
           <GenericSetFretboardPanel
           showComplement={showComplement}
           analysisMode={analysisMode}
+          fretboardViewMode={fretboardViewMode}
           browseMode={browseMode}
           noteName={noteName}
           activeSet={activeSet}
           selectedVoicing={selectedVoicing}
           filteredVoicings={filteredVoicings}
+          primaryFormVoicing={primaryFormVoicing}
+          primaryFormDegreeMap={primaryFormDegreeMap}
+          primaryFormIntervalMap={primaryFormIntervalMap}
+          primaryFormIntervalLegend={primaryFormIntervalLegend}
           showAll={showAll}
           displayMode={displayMode}
           intervalVectorFamilyClasses={intervalVectorFamilyClasses}
@@ -936,12 +1066,18 @@ export default function GenericSetPage({
           onToggleIntervalClass={handleToggleIntervalClass}
           onClearIntervalClassFilter={handleClearIntervalClassFilter}
           filteredPrimaryTargetPcs={filteredPrimaryTargetPcs}
+          filteredPrimaryFormTargetPcs={filteredPrimaryFormTargetPcs}
           selectedAnalysisClass={selectedAnalysisClass}
           selectedAnalysisMember={selectedAnalysisMember}
           filteredAnalysisTargetPcs={filteredAnalysisTargetPcs}
+          filteredAnalysisPrimaryFormTargetPcs={filteredAnalysisPrimaryFormTargetPcs}
           canRenderAnalysisVoicings={canRenderAnalysisVoicings}
           selectedAnalysisVoicing={selectedAnalysisVoicing}
           analysisFilteredVoicings={analysisFilteredVoicings}
+          analysisPrimaryFormVoicing={analysisPrimaryFormVoicing}
+          analysisPrimaryFormDegreeMap={analysisPrimaryFormDegreeMap}
+          analysisPrimaryFormIntervalMap={analysisPrimaryFormIntervalMap}
+          analysisPrimaryFormIntervalLegend={analysisPrimaryFormIntervalLegend}
           analysisShowAllVoicings={analysisShowAllVoicings}
           analysisDegreeMap={analysisDegreeMap}
           analysisIntervalMap={analysisIntervalMap}

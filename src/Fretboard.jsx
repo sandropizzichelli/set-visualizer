@@ -37,6 +37,7 @@ export default function Fretboard({
   selectedIntervalClasses = [],
   highlightAllAsActive = false,
   hideEmptyStrings = false,
+  showTargetMap = true,
 }) {
   const selectedMap = new Map();
   const isIntervalMode = displayMode === "intervals" && intervalMap;
@@ -288,7 +289,7 @@ export default function Fretboard({
                   const active =
                     Boolean(selectedInfo) ||
                     (highlightAllAsActive && targetPitchClassSet.has(pc));
-                  const target = targetPitchClassSet.has(pc);
+                  const target = showTargetMap && targetPitchClassSet.has(pc);
                   const interval = intervalMap?.get(selectedInfo?.pc ?? pc);
 
                   let text = "";

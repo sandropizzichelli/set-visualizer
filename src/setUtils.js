@@ -356,6 +356,58 @@ export function findHexachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
   return findNNoteVoicings(targetPcs, maxSpan, ALL_6_STRING_GROUPS, 6);
 }
 
+export function buildPrimaryFormVoicing(orderedPcs) {
+  if (!orderedPcs?.length) return null;
+
+  const maxInterval = Math.max(...orderedPcs);
+  const candidates = [];
+
+  STRINGS.forEach((stringItem, stringIndex) => {
+    for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
+      if (pcAt(stringIndex, fret) !== 0) continue;
+      if (fret + maxInterval > FRET_COUNT) continue;
+
+      candidates.push({
+        stringIndex,
+        startFret: fret,
+        centerDistance: Math.abs(stringIndex - (STRINGS.length - 1) / 2),
+      });
+    }
+  });
+
+  if (!candidates.length) return null;
+
+  candidates.sort((first, second) => {
+    if (first.startFret !== second.startFret) {
+      return first.startFret - second.startFret;
+    }
+
+    if (first.centerDistance !== second.centerDistance) {
+      return first.centerDistance - second.centerDistance;
+    }
+
+    return second.stringIndex - first.stringIndex;
+  });
+
+  const { stringIndex, startFret } = candidates[0];
+  const positions = orderedPcs.map((pc) => ({
+    stringIndex,
+    fret: startFret + pc,
+    pc,
+  }));
+  const frets = positions.map((position) => position.fret);
+
+  return {
+    strings: [stringIndex],
+    positions,
+    span: Math.max(...frets) - Math.min(...frets),
+    lowestFret: Math.min(...frets),
+    hasSkip: false,
+    stringPattern: STRINGS[stringIndex].name,
+    isPrimaryForm: true,
+  };
+}
+
 export function groupVoicingsByStructure(voicings) {
   const grouped = new Map();
 
