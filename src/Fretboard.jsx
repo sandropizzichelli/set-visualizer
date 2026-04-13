@@ -7,10 +7,11 @@ import {
 } from "./genericSetPageHelpers";
 
 const LABEL_WIDTH = 56;
-const CELL_WIDTH = 48;
-const CELL_HEIGHT = 42;
-const GRID_GAP = 6;
-const HEADER_HEIGHT = 20;
+const CELL_WIDTH = 72;
+const CELL_HEIGHT = 38;
+const HEADER_HEIGHT = 28;
+const SINGLE_MARKER_FRETS = [3, 5, 7, 9];
+const DOUBLE_MARKER_FRETS = [12];
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -19,6 +20,10 @@ function clamp(value, min, max) {
 function getIntervalClass(firstPc, secondPc) {
   const distance = (secondPc - firstPc + 12) % 12;
   return Math.min(distance, 12 - distance);
+}
+
+function getStringGauge(rowIndex) {
+  return 1.25 + rowIndex * 0.25;
 }
 
 export default function Fretboard({
@@ -101,10 +106,10 @@ export default function Fretboard({
     selectedPositions.length > 1 &&
     !showAll &&
     !highlightAllAsActive;
-  const overlayWidth =
-    LABEL_WIDTH + (FRET_COUNT + 1) * CELL_WIDTH + (FRET_COUNT + 1) * GRID_GAP;
-  const overlayHeight =
-    HEADER_HEIGHT + visibleStrings.length * CELL_HEIGHT + visibleStrings.length * GRID_GAP;
+  const boardWidth = (FRET_COUNT + 1) * CELL_WIDTH;
+  const boardHeight = visibleStrings.length * CELL_HEIGHT;
+  const overlayWidth = LABEL_WIDTH + boardWidth;
+  const overlayHeight = HEADER_HEIGHT + boardHeight;
 
   const connectionSegments = canRenderConnections
     ? selectedPositions.flatMap((firstPosition, firstIndex) =>
@@ -117,25 +122,13 @@ export default function Fretboard({
           if (firstRow === undefined || secondRow === undefined) return [];
 
           const x1 =
-            LABEL_WIDTH +
-            GRID_GAP +
-            firstPosition.fret * (CELL_WIDTH + GRID_GAP) +
-            CELL_WIDTH / 2;
+            LABEL_WIDTH + firstPosition.fret * CELL_WIDTH + CELL_WIDTH / 2;
           const y1 =
-            HEADER_HEIGHT +
-            GRID_GAP +
-            firstRow * (CELL_HEIGHT + GRID_GAP) +
-            CELL_HEIGHT / 2;
+            HEADER_HEIGHT + firstRow * CELL_HEIGHT + CELL_HEIGHT / 2;
           const x2 =
-            LABEL_WIDTH +
-            GRID_GAP +
-            secondPosition.fret * (CELL_WIDTH + GRID_GAP) +
-            CELL_WIDTH / 2;
+            LABEL_WIDTH + secondPosition.fret * CELL_WIDTH + CELL_WIDTH / 2;
           const y2 =
-            HEADER_HEIGHT +
-            GRID_GAP +
-            secondRow * (CELL_HEIGHT + GRID_GAP) +
-            CELL_HEIGHT / 2;
+            HEADER_HEIGHT + secondRow * CELL_HEIGHT + CELL_HEIGHT / 2;
           const dx = x2 - x1;
           const dy = y2 - y1;
           const distance = Math.hypot(dx, dy) || 1;
@@ -169,13 +162,82 @@ export default function Fretboard({
       )
     : [];
 
+  const fretMarkers = [
+    ...SINGLE_MARKER_FRETS.map((fret) => ({
+      key: `marker-${fret}`,
+      fret,
+      positions: [0.5],
+    })),
+    ...DOUBLE_MARKER_FRETS.map((fret) => ({
+      key: `marker-${fret}`,
+      fret,
+      positions: [0.34, 0.66],
+    })),
+  ];
+
   return (
     <div className="fretboard-scroll">
       <div className="fretboard-board">
         <div
           className="fretboard-grid"
-          style={{ gridTemplateColumns: `56px repeat(${FRET_COUNT + 1}, 48px)` }}
+          style={{
+            "--label-width": `${LABEL_WIDTH}px`,
+            "--cell-width": `${CELL_WIDTH}px`,
+            "--cell-height": `${CELL_HEIGHT}px`,
+            "--header-height": `${HEADER_HEIGHT}px`,
+            gridTemplateColumns: `${LABEL_WIDTH}px repeat(${FRET_COUNT + 1}, ${CELL_WIDTH}px)`,
+          }}
         >
+          <div
+            className="fretboard-surface"
+            style={{
+              left: LABEL_WIDTH,
+              top: HEADER_HEIGHT,
+              width: boardWidth,
+              height: boardHeight,
+            }}
+            aria-hidden="true"
+          >
+            <div className="fretboard-surface__wood" />
+            <div className="fretboard-surface__nut" />
+
+            {Array.from({ length: FRET_COUNT }, (_, index) => {
+              const fret = index + 1;
+
+              return (
+                <div
+                  key={`fret-${fret}`}
+                  className="fretboard-surface__fret"
+                  style={{ left: fret * CELL_WIDTH }}
+                />
+              );
+            })}
+
+            {visibleStrings.map((displayString, rowIndex) => (
+              <div
+                key={`line-${displayString.name}`}
+                className="fretboard-surface__string"
+                style={{
+                  top: rowIndex * CELL_HEIGHT + CELL_HEIGHT / 2,
+                  height: getStringGauge(rowIndex),
+                }}
+              />
+            ))}
+
+            {fretMarkers.map((marker) =>
+              marker.positions.map((position, markerIndex) => (
+                <div
+                  key={`${marker.key}-${markerIndex}`}
+                  className="fretboard-surface__inlay"
+                  style={{
+                    left: marker.fret * CELL_WIDTH + CELL_WIDTH / 2,
+                    top: boardHeight * position,
+                  }}
+                />
+              ))
+            )}
+          </div>
+
           {connectionSegments.length > 0 && (
             <svg
               className="fretboard-overlay"
@@ -215,7 +277,9 @@ export default function Fretboard({
 
             return (
               <React.Fragment key={displayString.name}>
-                <div className="fretboard__string-label">{displayString.name}</div>
+                <div className="fretboard__string-label">
+                  <span>{displayString.name}</span>
+                </div>
 
                 {Array.from({ length: FRET_COUNT + 1 }, (_, fret) => {
                   const pc = pcAt(stringIndex, fret);
@@ -241,12 +305,14 @@ export default function Fretboard({
                   }
 
                   const className = ["fretboard__cell"];
+                  const markerClassName = ["fretboard__marker"];
                   const style = {};
+                  const hasMarker = active || (target && !highlightAllAsActive);
 
                   if (active) {
-                    className.push("is-active");
+                    markerClassName.push("is-active");
                   } else if (target && !highlightAllAsActive) {
-                    className.push("is-target");
+                    markerClassName.push("is-target");
                   }
 
                   if (isIntervalMode && interval !== undefined && interval !== null) {
@@ -267,10 +333,20 @@ export default function Fretboard({
                     <div
                       key={cellKey}
                       className={className.join(" ")}
-                      style={style}
-                      title={isIntervalMode && interval !== undefined ? `${PC_TO_NAME[pc]} · ${formatSemitoneLabel(interval)}` : PC_TO_NAME[pc]}
                     >
-                      {text}
+                      {hasMarker ? (
+                        <div
+                          className={markerClassName.join(" ")}
+                          style={style}
+                          title={
+                            isIntervalMode && interval !== undefined
+                              ? `${PC_TO_NAME[pc]} · ${formatSemitoneLabel(interval)}`
+                              : PC_TO_NAME[pc]
+                          }
+                        >
+                          {text}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
