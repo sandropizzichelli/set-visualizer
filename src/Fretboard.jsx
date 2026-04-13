@@ -38,10 +38,12 @@ export default function Fretboard({
   highlightAllAsActive = false,
   hideEmptyStrings = false,
   showTargetMap = true,
+  extraTargetPcs = [],
+  pcRoleMap = null,
 }) {
   const selectedMap = new Map();
   const isIntervalMode = displayMode === "intervals" && intervalMap;
-  const targetPitchClassSet = new Set(allTargetPcs);
+  const targetPitchClassSet = new Set([...allTargetPcs, ...extraTargetPcs]);
 
   if (showAll && allVoicings) {
     allVoicings.forEach((currentVoicing) => {
@@ -291,6 +293,7 @@ export default function Fretboard({
                     (highlightAllAsActive && targetPitchClassSet.has(pc));
                   const target = showTargetMap && targetPitchClassSet.has(pc);
                   const interval = intervalMap?.get(selectedInfo?.pc ?? pc);
+                  const markerRole = pcRoleMap?.get(selectedInfo?.pc ?? pc) || null;
 
                   let text = "";
                   if (active) {
@@ -312,8 +315,16 @@ export default function Fretboard({
 
                   if (active) {
                     markerClassName.push("is-active");
+                    if (markerRole === "added") {
+                      markerClassName.push("is-added");
+                    } else if (markerRole === "core") {
+                      markerClassName.push("is-core");
+                    }
                   } else if (target && !highlightAllAsActive) {
                     markerClassName.push("is-target");
+                    if (markerRole === "missing") {
+                      markerClassName.push("is-missing");
+                    }
                   }
 
                   if (isIntervalMode && interval !== undefined && interval !== null) {

@@ -1,7 +1,11 @@
 import React from "react";
 import Fretboard from "./Fretboard";
 import { PC_TO_NAME } from "./setData";
-import { formatIntervalVector, getIntervalStyle } from "./genericSetPageHelpers";
+import {
+  buildOccurrenceSummary,
+  formatIntervalVector,
+  getIntervalStyle,
+} from "./genericSetPageHelpers";
 
 function ActiveIntervalLegend({ selectedIntervalClasses }) {
   if (!selectedIntervalClasses.length) return null;
@@ -100,6 +104,63 @@ function IntervalLegend({
   );
 }
 
+function OccurrenceRelationLegend({ analysisMode, summary }) {
+  if (!summary) return null;
+
+  return (
+    <div className="analysis-card analysis-card--compact">
+      <div className="picker-head">
+        <div className="section-title">Lettura sul manico</div>
+        <span className="class-badge">{summary.typeLabel}</span>
+      </div>
+
+      <div className="occurrence-fretboard-legend">
+        <div className="occurrence-fretboard-legend__chip">
+          <span className="occurrence-fretboard-legend__swatch occurrence-fretboard-legend__swatch--core" />
+          <div>
+            <strong>Nucleo</strong>
+            <span>
+              {analysisMode === "subsets"
+                ? "note presenti nell'occorrenza"
+                : "note del set madre conservate"}
+            </span>
+          </div>
+        </div>
+
+        {analysisMode === "subsets" ? (
+          <div className="occurrence-fretboard-legend__chip">
+            <span className="occurrence-fretboard-legend__swatch occurrence-fretboard-legend__swatch--missing" />
+            <div>
+              <strong>Gradi mancanti</strong>
+              <span>{summary.missingPcs.map((pc) => PC_TO_NAME[pc]).join(" · ") || "nessuno"}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="occurrence-fretboard-legend__chip">
+            <span className="occurrence-fretboard-legend__swatch occurrence-fretboard-legend__swatch--added" />
+            <div>
+              <strong>Note aggiunte</strong>
+              <span>{summary.addedPcs.map((pc) => PC_TO_NAME[pc]).join(" · ") || "nessuna"}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FretboardStage({ title, badge, children }) {
+  return (
+    <div className="analysis-card analysis-card--fretboard">
+      <div className="picker-head">
+        <div className="section-title">{title}</div>
+        <span className="class-badge">{badge}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export default function GenericSetFretboardPanel({
   browseMode,
   showComplement,
@@ -147,9 +208,31 @@ export default function GenericSetFretboardPanel({
   const canRenderAnalysisPrimaryForm =
     Boolean(selectedAnalysisClass?.primeForm?.length) &&
     Boolean(analysisPrimaryFormVoicing);
+  const selectedOccurrenceSummary =
+    !showingPrimaryForm && analysisMode !== "voicings"
+      ? buildOccurrenceSummary(
+          analysisMode,
+          activeSet,
+          selectedAnalysisClass,
+          selectedAnalysisMember
+        )
+      : null;
+  const analysisPcRoleMap = new Map();
+
+  selectedOccurrenceSummary?.retainedPcs.forEach((pc) => {
+    analysisPcRoleMap.set(pc, "core");
+  });
+  selectedOccurrenceSummary?.addedPcs.forEach((pc) => {
+    analysisPcRoleMap.set(pc, "added");
+  });
+  selectedOccurrenceSummary?.missingPcs.forEach((pc) => {
+    if (!analysisPcRoleMap.has(pc)) {
+      analysisPcRoleMap.set(pc, "missing");
+    }
+  });
 
   return (
-    <div className="set-panel">
+    <div className="set-panel set-panel--fretboard-panel">
       <div className="panel-header">
         <div className="panel-header__copy">
           <div className="eyebrow">Spazio sul manico</div>
@@ -162,7 +245,7 @@ export default function GenericSetFretboardPanel({
 
       {!showComplement ? (
         analysisMode === "voicings" ? (
-          <div className="panel-stack">
+          <div className="panel-stack panel-stack--spacious">
             <p className="helper-text">
               {showingPrimaryForm
                 ? "Il manico mostra una disposizione lineare e compatta della prime form della classe attiva: e una lettura teorica della set-class, non un voicing generato. Se attivi la spunta, vedi tutte le sue posizioni utili insieme sul manico."
@@ -170,19 +253,21 @@ export default function GenericSetFretboardPanel({
             </p>
 
             {activeSet && (
-              <div className="panel-stack">
-                <div className="info-note">
-                  Prime form del {noteName}: [{activeSet.primeForm.join(",")}] |
-                  trasformata ordinata: [{activeSet.transformedPrimeForm.join(",")}]
-                </div>
-                <div className="info-note">
-                  Nome Forte del {noteName}: {activeSet.forteName}
-                  {browseMode === "iv" && (
-                    <>
-                      {" | "}
-                      famiglia IV: {formatIntervalVector(selectedIntervalVector)} ({intervalVectorFamilyClasses.length} classi)
-                    </>
-                  )}
+              <div className="analysis-card analysis-card--compact">
+                <div className="panel-stack">
+                  <div className="info-note">
+                    Prime form del {noteName}: [{activeSet.primeForm.join(",")}] |
+                    trasformata ordinata: [{activeSet.transformedPrimeForm.join(",")}]
+                  </div>
+                  <div className="info-note">
+                    Nome Forte del {noteName}: {activeSet.forteName}
+                    {browseMode === "iv" && (
+                      <>
+                        {" | "}
+                        famiglia IV: {formatIntervalVector(selectedIntervalVector)} ({intervalVectorFamilyClasses.length} classi)
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -190,7 +275,9 @@ export default function GenericSetFretboardPanel({
             {showIntervalLegend && activeSet && (
               <IntervalLegend
                 title={
-                  showingPrimaryForm ? "Mappa intervallare della forma primaria" : "Mappa intervallare"
+                  showingPrimaryForm
+                    ? "Mappa intervallare della forma primaria"
+                    : "Mappa intervallare"
                 }
                 legend={showingPrimaryForm ? primaryFormIntervalLegend : activeSet.intervalLegend}
                 breakdown={activeSet.intervalClassBreakdown}
@@ -209,28 +296,35 @@ export default function GenericSetFretboardPanel({
               </div>
             )}
 
-            <Fretboard
-              voicing={showingPrimaryForm ? primaryFormVoicing : selectedVoicing}
-              allTargetPcs={
+            <FretboardStage
+              title="Vista sul manico"
+              badge={
                 showingPrimaryForm
-                  ? filteredPrimaryFormTargetPcs
-                  : filteredPrimaryTargetPcs
+                  ? "Forma primaria"
+                  : showAll
+                    ? "Tutte le forme"
+                    : "Forma selezionata"
               }
-              allVoicings={showingPrimaryForm ? primaryFormVoicings : filteredVoicings}
-              showAll={showAll}
-              displayMode={displayMode}
-              degreeMap={
-                showingPrimaryForm ? primaryFormDegreeMap : activeSet?.degreeMap
-              }
-              intervalMap={
-                showingPrimaryForm ? primaryFormIntervalMap : activeSet?.intervalMap
-              }
-              selectedIntervalClasses={selectedIntervalClasses}
-              showTargetMap={!showingPrimaryForm}
-            />
+            >
+              <Fretboard
+                voicing={showingPrimaryForm ? primaryFormVoicing : selectedVoicing}
+                allTargetPcs={
+                  showingPrimaryForm
+                    ? filteredPrimaryFormTargetPcs
+                    : filteredPrimaryTargetPcs
+                }
+                allVoicings={showingPrimaryForm ? primaryFormVoicings : filteredVoicings}
+                showAll={showAll}
+                displayMode={displayMode}
+                degreeMap={showingPrimaryForm ? primaryFormDegreeMap : activeSet?.degreeMap}
+                intervalMap={showingPrimaryForm ? primaryFormIntervalMap : activeSet?.intervalMap}
+                selectedIntervalClasses={selectedIntervalClasses}
+                showTargetMap={!showingPrimaryForm}
+              />
+            </FretboardStage>
           </div>
         ) : (
-          <div className="panel-stack">
+          <div className="panel-stack panel-stack--spacious">
             <p className="helper-text">
               {showingPrimaryForm
                 ? "Seleziona una classe a destra. Il manico mostra una disposizione lineare e compatta della sua prime form, oppure tutte le sue posizioni se attivi la spunta."
@@ -238,15 +332,19 @@ export default function GenericSetFretboardPanel({
             </p>
 
             {selectedAnalysisClass && (
-              <div className="info-note">
-                Classe selezionata: {selectedAnalysisClass.forteName || "n.d."} | PF
-                [{selectedAnalysisClass.primeForm.join(",")}] | IV {formatIntervalVector(selectedAnalysisClass.iv)}
-              </div>
-            )}
+              <div className="analysis-card analysis-card--compact">
+                <div className="panel-stack">
+                  <div className="info-note">
+                    Classe selezionata: {selectedAnalysisClass.forteName || "n.d."} | PF
+                    [{selectedAnalysisClass.primeForm.join(",")}] | IV {formatIntervalVector(selectedAnalysisClass.iv)}
+                  </div>
 
-            {selectedAnalysisMember && (
-              <div className="info-note">
-                Occorrenza concreta: [{selectedAnalysisMember.join(",")}]
+                  {selectedAnalysisMember && (
+                    <div className="info-note">
+                      Occorrenza concreta: [{selectedAnalysisMember.join(",")}]
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -271,6 +369,11 @@ export default function GenericSetFretboardPanel({
               />
             )}
 
+            <OccurrenceRelationLegend
+              analysisMode={analysisMode}
+              summary={selectedOccurrenceSummary}
+            />
+
             {selectedAnalysisMember && !canRenderAnalysisVoicings && (
               <div className="info-note">
                 Cardinalita {selectedAnalysisMember.length}: sul manico vengono mostrate
@@ -278,68 +381,89 @@ export default function GenericSetFretboardPanel({
               </div>
             )}
 
-            <Fretboard
-              voicing={
-                showingPrimaryForm
-                  ? canRenderAnalysisPrimaryForm
-                    ? analysisPrimaryFormVoicing
-                    : null
-                  : canRenderAnalysisVoicings
-                    ? selectedAnalysisVoicing
-                  : null
-              }
-              allTargetPcs={
-                showingPrimaryForm
-                  ? filteredAnalysisPrimaryFormTargetPcs
-                  : filteredAnalysisTargetPcs
-              }
-              allVoicings={
-                showingPrimaryForm
-                  ? analysisPrimaryFormVoicings
-                  : !canRenderAnalysisVoicings
-                    ? []
-                  : analysisFilteredVoicings
-              }
-              showAll={
+            <FretboardStage
+              title="Vista sul manico"
+              badge={
                 showingPrimaryForm
                   ? analysisShowAllVoicings
-                  : !canRenderAnalysisVoicings
-                    ? false
+                    ? "Prime form sovrapposte"
+                    : "Prime form"
                   : analysisShowAllVoicings
+                    ? "Occorrenze sovrapposte"
+                    : "Occorrenza selezionata"
               }
-              displayMode={displayMode}
-              degreeMap={
-                showingPrimaryForm
-                  ? analysisPrimaryFormDegreeMap
-                  : analysisDegreeMap
-              }
-              intervalMap={
-                showingPrimaryForm
-                  ? analysisPrimaryFormIntervalMap
-                  : analysisIntervalMap
-              }
-              selectedIntervalClasses={selectedIntervalClasses}
-              showTargetMap={!showingPrimaryForm}
-            />
+            >
+              <Fretboard
+                voicing={
+                  showingPrimaryForm
+                    ? canRenderAnalysisPrimaryForm
+                      ? analysisPrimaryFormVoicing
+                      : null
+                    : canRenderAnalysisVoicings
+                      ? selectedAnalysisVoicing
+                      : null
+                }
+                allTargetPcs={
+                  showingPrimaryForm
+                    ? filteredAnalysisPrimaryFormTargetPcs
+                    : filteredAnalysisTargetPcs
+                }
+                allVoicings={
+                  showingPrimaryForm
+                    ? analysisPrimaryFormVoicings
+                    : !canRenderAnalysisVoicings
+                      ? []
+                      : analysisFilteredVoicings
+                }
+                showAll={
+                  showingPrimaryForm
+                    ? analysisShowAllVoicings
+                    : !canRenderAnalysisVoicings
+                      ? false
+                      : analysisShowAllVoicings
+                }
+                displayMode={displayMode}
+                degreeMap={
+                  showingPrimaryForm
+                    ? analysisPrimaryFormDegreeMap
+                    : analysisDegreeMap
+                }
+                intervalMap={
+                  showingPrimaryForm
+                    ? analysisPrimaryFormIntervalMap
+                    : analysisIntervalMap
+                }
+                selectedIntervalClasses={selectedIntervalClasses}
+                showTargetMap={!showingPrimaryForm}
+                extraTargetPcs={
+                  showingPrimaryForm || !selectedOccurrenceSummary
+                    ? []
+                    : selectedOccurrenceSummary.missingPcs
+                }
+                pcRoleMap={showingPrimaryForm ? null : analysisPcRoleMap}
+              />
+            </FretboardStage>
           </div>
         )
       ) : (
-        <div className="panel-stack">
+        <div className="panel-stack panel-stack--spacious">
           <p className="helper-text">
             Le caselle evidenziate mostrano il complementare della trasformazione attiva
             del {noteName}.
           </p>
 
-          <Fretboard
-            voicing={null}
-            allTargetPcs={complementData ? complementData.pcs : []}
-            allVoicings={[]}
-            showAll={false}
-            displayMode="notes"
-            degreeMap={null}
-            intervalMap={null}
-            highlightAllAsActive={true}
-          />
+          <FretboardStage title="Vista sul manico" badge="Complementare">
+            <Fretboard
+              voicing={null}
+              allTargetPcs={complementData ? complementData.pcs : []}
+              allVoicings={[]}
+              showAll={false}
+              displayMode="notes"
+              degreeMap={null}
+              intervalMap={null}
+              highlightAllAsActive={true}
+            />
+          </FretboardStage>
         </div>
       )}
     </div>

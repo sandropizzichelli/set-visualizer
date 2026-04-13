@@ -1,3 +1,10 @@
+import { PC_TO_NAME } from "./setData";
+import {
+  invertPcsAroundZero,
+  normalizePcs,
+  transposePcs,
+} from "./setUtils";
+
 export function getCardinalityLabel(n) {
   const labels = {
     3: "Tricordi",
@@ -106,4 +113,107 @@ export function buildIntervalClassPitchClassMap(orderedPcs) {
   }
 
   return map;
+}
+
+function compareArrays(first, second) {
+  if (first.length !== second.length) return false;
+  return first.every((value, index) => value === second[index]);
+}
+
+export function describeOccurrenceTransform(primeFormArray, occurrence) {
+  const primeForm = normalizePcs(primeFormArray || []);
+  const normalizedOccurrence = normalizePcs(occurrence || []);
+
+  if (!primeForm.length || primeForm.length !== normalizedOccurrence.length) {
+    return "n.d.";
+  }
+
+  const matches = [];
+
+  for (let amount = 0; amount < 12; amount += 1) {
+    if (compareArrays(transposePcs(primeForm, amount), normalizedOccurrence)) {
+      matches.push(`T${amount}`);
+    }
+  }
+
+  const inverted = invertPcsAroundZero(primeForm);
+
+  for (let amount = 0; amount < 12; amount += 1) {
+    if (compareArrays(transposePcs(inverted, amount), normalizedOccurrence)) {
+      matches.push(`T${amount}I`);
+    }
+  }
+
+  return [...new Set(matches)].join(" / ") || "n.d.";
+}
+
+export function formatDegreeList(degrees) {
+  return degrees.length ? degrees.join("-") : "nessuno";
+}
+
+export function formatPitchClassList(pcs) {
+  return pcs.length ? pcs.map((pc) => PC_TO_NAME[pc]).join(" · ") : "nessuna";
+}
+
+export function getDegreesForPcs(pcs, degreeMap) {
+  if (!degreeMap) return [];
+
+  return [...new Set(
+    normalizePcs(pcs)
+      .map((pc) => degreeMap.get(pc))
+      .filter((degree) => degree !== undefined && degree !== null)
+  )].sort((first, second) => first - second);
+}
+
+function isCircularSegment(degrees, totalCount) {
+  const uniqueDegrees = [...new Set(degrees)].sort((first, second) => first - second);
+
+  if (!uniqueDegrees.length) return false;
+  if (uniqueDegrees.length === 1 || uniqueDegrees.length === totalCount) return true;
+
+  return uniqueDegrees.some((startDegree) =>
+    uniqueDegrees.every((_, offset) => {
+      const expected = ((startDegree - 1 + offset) % totalCount) + 1;
+      return uniqueDegrees.includes(expected);
+    })
+  );
+}
+
+export function buildOccurrenceSummary(
+  analysisMode,
+  activeSet,
+  selectedAnalysisClass,
+  selectedAnalysisMember
+) {
+  if (!activeSet || !selectedAnalysisClass || !selectedAnalysisMember) return null;
+
+  const motherPcs = normalizePcs(activeSet.pcs || []);
+  const memberPcs = normalizePcs(selectedAnalysisMember);
+  const motherPitchClassSet = new Set(motherPcs);
+
+  const retainedPcs = memberPcs.filter((pc) => motherPitchClassSet.has(pc));
+  const missingPcs = motherPcs.filter((pc) => !memberPcs.includes(pc));
+  const addedPcs = memberPcs.filter((pc) => !motherPitchClassSet.has(pc));
+  const retainedDegrees = getDegreesForPcs(retainedPcs, activeSet.degreeMap);
+  const missingDegrees = getDegreesForPcs(missingPcs, activeSet.degreeMap);
+
+  return {
+    classTransform: describeOccurrenceTransform(
+      selectedAnalysisClass.primeForm,
+      selectedAnalysisMember
+    ),
+    retainedPcs,
+    missingPcs,
+    retainedDegrees,
+    missingDegrees,
+    addedPcs,
+    typeLabel:
+      analysisMode === "subsets"
+        ? isCircularSegment(retainedDegrees, activeSet.pcs.length)
+          ? "segmento contiguo"
+          : "selezione discontinua"
+        : addedPcs.length === 1
+          ? "espansione di 1 nota"
+          : `espansione di ${addedPcs.length} note`,
+  };
 }
