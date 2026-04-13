@@ -76,6 +76,7 @@ export default function GenericSetResultsPanel({
   browseMode,
   showComplement,
   analysisMode,
+  fretboardViewMode,
   filteredVoicings,
   filteredVoicingOccurrenceCount,
   noteName,
@@ -102,6 +103,7 @@ export default function GenericSetResultsPanel({
   analysisShowAllVoicings,
   onAnalysisShowAllVoicingsChange,
   analysisFilteredVoicings,
+  analysisPrimaryFormVoicings,
   analysisVoicingOccurrenceCount,
   activeSelectedAnalysisVoicingIndex,
   onSelectAnalysisVoicing,
@@ -114,6 +116,7 @@ export default function GenericSetResultsPanel({
   const analysisTargetLabel = getCardinalityLabel(
     analysisMode === "subsets" ? subsetTargetCardinality : supersetTargetCardinality
   ).toLowerCase();
+  const showingPrimaryForm = fretboardViewMode === "prime";
 
   return (
     <div className="set-panel">
@@ -305,15 +308,17 @@ export default function GenericSetResultsPanel({
                     </div>
                   )}
 
-                  {canRenderAnalysisVoicings ? (
+                  {canRenderAnalysisVoicings || showingPrimaryForm ? (
                     <>
-                      <div className="control-card__stack">
-                        <BassButtons
-                          noteCount={selectedAnalysisMember.length}
-                          value={analysisBassFilter}
-                          onChange={onAnalysisBassFilterChange}
-                        />
-                      </div>
+                      {!showingPrimaryForm && (
+                        <div className="control-card__stack">
+                          <BassButtons
+                            noteCount={selectedAnalysisMember.length}
+                            value={analysisBassFilter}
+                            onChange={onAnalysisBassFilterChange}
+                          />
+                        </div>
+                      )}
 
                       <div className="toggle-stack">
                         <label className="toggle-row">
@@ -328,48 +333,55 @@ export default function GenericSetResultsPanel({
                         </label>
                       </div>
 
-                      <div className="panel-stack">
-                        <div className="picker-head">
-                          <div className="section-title">Forme / rivolti</div>
-                          <ClassBadge>{analysisFilteredVoicings.length}</ClassBadge>
-                        </div>
-
+                      {showingPrimaryForm ? (
                         <p className="helper-text helper-text--small">
-                          {analysisFilteredVoicings.length} forme uniche e{" "}
-                          {analysisVoicingOccurrenceCount} occorrenze per questa
-                          occorrenza concreta.
+                          {analysisPrimaryFormVoicings.length} posizioni utili della
+                          forma primaria disponibili per questa classe.
                         </p>
-                        <p className="helper-text helper-text--small">
-                          Anche qui le posizioni strutturalmente identiche vengono raggruppate.
-                        </p>
+                      ) : (
+                        <div className="panel-stack">
+                          <div className="picker-head">
+                            <div className="section-title">Forme / rivolti</div>
+                            <ClassBadge>{analysisFilteredVoicings.length}</ClassBadge>
+                          </div>
 
-                        <div className="results-scroll results-scroll--compact">
-                          {analysisFilteredVoicings.map((voicing, index) => (
-                            <VoicingCard
-                              key={`${analysisMode}-${getClassKey(
-                                selectedAnalysisClass
-                              )}-${activeSelectedAnalysisMemberIndex}-${index}-${voicing.positions
-                                .map((position) => `${position.stringIndex}-${position.fret}`)
-                                .join("-")}`}
-                              voicing={voicing}
-                              index={index}
-                              selected={index === activeSelectedAnalysisVoicingIndex}
-                              onSelect={() => onSelectAnalysisVoicing(index)}
-                              displayMode={displayMode}
-                              showPrimeForm={true}
-                              showForte={true}
-                              degreeMap={analysisDegreeMap}
-                              intervalMap={analysisIntervalMap}
-                            />
-                          ))}
+                          <p className="helper-text helper-text--small">
+                            {analysisFilteredVoicings.length} forme uniche e{" "}
+                            {analysisVoicingOccurrenceCount} occorrenze per questa
+                            occorrenza concreta.
+                          </p>
+                          <p className="helper-text helper-text--small">
+                            Anche qui le posizioni strutturalmente identiche vengono raggruppate.
+                          </p>
 
-                          {analysisFilteredVoicings.length === 0 && (
-                            <p className="empty-note">
-                              Nessun voicing disponibile con i filtri correnti.
-                            </p>
-                          )}
+                          <div className="results-scroll results-scroll--compact">
+                            {analysisFilteredVoicings.map((voicing, index) => (
+                              <VoicingCard
+                                key={`${analysisMode}-${getClassKey(
+                                  selectedAnalysisClass
+                                )}-${activeSelectedAnalysisMemberIndex}-${index}-${voicing.positions
+                                  .map((position) => `${position.stringIndex}-${position.fret}`)
+                                  .join("-")}`}
+                                voicing={voicing}
+                                index={index}
+                                selected={index === activeSelectedAnalysisVoicingIndex}
+                                onSelect={() => onSelectAnalysisVoicing(index)}
+                                displayMode={displayMode}
+                                showPrimeForm={true}
+                                showForte={true}
+                                degreeMap={analysisDegreeMap}
+                                intervalMap={analysisIntervalMap}
+                              />
+                            ))}
+
+                            {analysisFilteredVoicings.length === 0 && (
+                              <p className="empty-note">
+                                Nessun voicing disponibile con i filtri correnti.
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </>
                   ) : (
                     <p className="empty-note">

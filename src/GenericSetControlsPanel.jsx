@@ -400,20 +400,19 @@ export default function GenericSetControlsPanel({
 
                 <div className="control-card control-card--wide">
                   <div className="toggle-stack">
-                    {fretboardViewMode === "voicing" ? (
-                      <label className="toggle-row">
-                        <input
-                          type="checkbox"
-                          checked={showAll}
-                          onChange={(event) => onShowAllChange(event.target.checked)}
-                        />
-                        Mostra tutte le forme uniche insieme sul manico
-                      </label>
-                    ) : (
+                    <label className="toggle-row">
+                      <input
+                        type="checkbox"
+                        checked={showAll}
+                        onChange={(event) => onShowAllChange(event.target.checked)}
+                      />
+                      Mostra tutte le forme uniche insieme sul manico
+                    </label>
+
+                    {fretboardViewMode === "prime" && (
                       <p className="helper-text">
-                        In `Forma primaria` il manico mostra una disposizione lineare
-                        e compatta della prime form della classe attiva, indipendente
-                        dai voicing trovati.
+                        In `Forma primaria` la spunta sovrappone tutte le posizioni
+                        utili della prime form sul manico.
                       </p>
                     )}
 

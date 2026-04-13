@@ -110,6 +110,7 @@ export default function GenericSetFretboardPanel({
   selectedVoicing,
   filteredVoicings,
   primaryFormVoicing,
+  primaryFormVoicings,
   primaryFormDegreeMap,
   primaryFormIntervalMap,
   primaryFormIntervalLegend,
@@ -130,6 +131,7 @@ export default function GenericSetFretboardPanel({
   selectedAnalysisVoicing,
   analysisFilteredVoicings,
   analysisPrimaryFormVoicing,
+  analysisPrimaryFormVoicings,
   analysisPrimaryFormDegreeMap,
   analysisPrimaryFormIntervalMap,
   analysisPrimaryFormIntervalLegend,
@@ -163,7 +165,7 @@ export default function GenericSetFretboardPanel({
           <div className="panel-stack">
             <p className="helper-text">
               {showingPrimaryForm
-                ? "Il manico mostra una disposizione lineare e compatta della prime form della classe attiva: e una lettura teorica della set-class, non un voicing generato."
+                ? "Il manico mostra una disposizione lineare e compatta della prime form della classe attiva: e una lettura teorica della set-class, non un voicing generato. Se attivi la spunta, vedi tutte le sue posizioni utili insieme sul manico."
                 : `Le caselle attenuate appartengono al ${noteName} trasformato. Le caselle evidenziate mostrano la forma selezionata, oppure tutte le forme uniche se l'opzione e attiva.`}
             </p>
 
@@ -214,8 +216,8 @@ export default function GenericSetFretboardPanel({
                   ? filteredPrimaryFormTargetPcs
                   : filteredPrimaryTargetPcs
               }
-              allVoicings={showingPrimaryForm ? [] : filteredVoicings}
-              showAll={showingPrimaryForm ? false : showAll}
+              allVoicings={showingPrimaryForm ? primaryFormVoicings : filteredVoicings}
+              showAll={showAll}
               displayMode={displayMode}
               degreeMap={
                 showingPrimaryForm ? primaryFormDegreeMap : activeSet?.degreeMap
@@ -231,7 +233,7 @@ export default function GenericSetFretboardPanel({
           <div className="panel-stack">
             <p className="helper-text">
               {showingPrimaryForm
-                ? "Seleziona una classe a destra. Il manico mostra una disposizione lineare e compatta della sua prime form."
+                ? "Seleziona una classe a destra. Il manico mostra una disposizione lineare e compatta della sua prime form, oppure tutte le sue posizioni se attivi la spunta."
                 : "Seleziona una classe a destra. Il manico mostra l&apos;occorrenza concreta scelta e, quando possibile, i suoi voicing o rivolti."}
             </p>
 
@@ -292,13 +294,17 @@ export default function GenericSetFretboardPanel({
                   : filteredAnalysisTargetPcs
               }
               allVoicings={
-                showingPrimaryForm || !canRenderAnalysisVoicings
-                  ? []
+                showingPrimaryForm
+                  ? analysisPrimaryFormVoicings
+                  : !canRenderAnalysisVoicings
+                    ? []
                   : analysisFilteredVoicings
               }
               showAll={
-                showingPrimaryForm || !canRenderAnalysisVoicings
-                  ? false
+                showingPrimaryForm
+                  ? analysisShowAllVoicings
+                  : !canRenderAnalysisVoicings
+                    ? false
                   : analysisShowAllVoicings
               }
               displayMode={displayMode}

@@ -15,6 +15,7 @@ import {
   findTetrachordVoicings,
   findPentachordVoicings,
   findHexachordVoicings,
+  buildPrimaryFormVoicings,
   buildPrimaryFormVoicing,
   groupVoicingsByStructure,
 } from "./setUtils";
@@ -417,6 +418,11 @@ export default function GenericSetPage({
     [activeSet]
   );
 
+  const primaryFormVoicings = useMemo(
+    () => groupVoicingsByStructure(buildPrimaryFormVoicings(activeSet?.primeForm || [])),
+    [activeSet]
+  );
+
   const primaryFormDegreeMap = useMemo(() => {
     if (!activeSet?.primeForm?.length) return null;
 
@@ -629,6 +635,14 @@ export default function GenericSetPage({
 
   const analysisPrimaryFormVoicing = useMemo(
     () => buildPrimaryFormVoicing(selectedAnalysisClass?.primeForm || []),
+    [selectedAnalysisClass]
+  );
+
+  const analysisPrimaryFormVoicings = useMemo(
+    () =>
+      groupVoicingsByStructure(
+        buildPrimaryFormVoicings(selectedAnalysisClass?.primeForm || [])
+      ),
     [selectedAnalysisClass]
   );
 
@@ -1055,6 +1069,7 @@ export default function GenericSetPage({
           selectedVoicing={selectedVoicing}
           filteredVoicings={filteredVoicings}
           primaryFormVoicing={primaryFormVoicing}
+          primaryFormVoicings={primaryFormVoicings}
           primaryFormDegreeMap={primaryFormDegreeMap}
           primaryFormIntervalMap={primaryFormIntervalMap}
           primaryFormIntervalLegend={primaryFormIntervalLegend}
@@ -1075,6 +1090,7 @@ export default function GenericSetPage({
           selectedAnalysisVoicing={selectedAnalysisVoicing}
           analysisFilteredVoicings={analysisFilteredVoicings}
           analysisPrimaryFormVoicing={analysisPrimaryFormVoicing}
+          analysisPrimaryFormVoicings={analysisPrimaryFormVoicings}
           analysisPrimaryFormDegreeMap={analysisPrimaryFormDegreeMap}
           analysisPrimaryFormIntervalMap={analysisPrimaryFormIntervalMap}
           analysisPrimaryFormIntervalLegend={analysisPrimaryFormIntervalLegend}
@@ -1090,6 +1106,7 @@ export default function GenericSetPage({
             browseMode={browseMode}
             showComplement={showComplement}
             analysisMode={analysisMode}
+            fretboardViewMode={fretboardViewMode}
             filteredVoicings={filteredVoicings}
             filteredVoicingOccurrenceCount={filteredVoicingOccurrenceCount}
             noteName={noteName}
@@ -1116,6 +1133,7 @@ export default function GenericSetPage({
             analysisShowAllVoicings={analysisShowAllVoicings}
             onAnalysisShowAllVoicingsChange={setAnalysisShowAllVoicings}
             analysisFilteredVoicings={analysisFilteredVoicings}
+            analysisPrimaryFormVoicings={analysisPrimaryFormVoicings}
             analysisVoicingOccurrenceCount={analysisVoicingOccurrenceCount}
             activeSelectedAnalysisVoicingIndex={activeSelectedAnalysisVoicingIndex}
             onSelectAnalysisVoicing={handleSelectAnalysisVoicing}
