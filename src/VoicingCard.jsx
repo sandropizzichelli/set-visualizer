@@ -61,8 +61,8 @@ export default function VoicingCard({
           value={voicing.strings.map((stringIndex) => STRINGS[stringIndex].name).join("-")}
         />
         <MetaChip
-          label="Connessione"
-          value={voicing.hasSkip ? "Con salto di corda" : "Corde adiacenti"}
+          label="Tipo"
+          value={voicing.hasSkip ? "Spread voicing" : "Close voicing"}
         />
         <MetaChip
           label="Rivolto"

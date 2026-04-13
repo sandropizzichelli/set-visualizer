@@ -54,7 +54,11 @@ export default function GenericSetControlsPanel({
   supersetTargetCardinality,
   onSupersetTargetCardinalityChange,
   groupFilter,
+  voicingLayoutFilter,
+  onVoicingLayoutFilterChange,
   availableGroupPatterns,
+  closeVoicingCount,
+  spreadVoicingCount,
   onGroupFilterChange,
   displayMode,
   onDisplayModeChange,
@@ -334,24 +338,69 @@ export default function GenericSetControlsPanel({
               <>
                 <div className="control-card">
                   <div className="control-card__stack">
-                    <SectionTitle>Gruppo corde</SectionTitle>
+                    <SectionTitle>Tipo di voicing</SectionTitle>
                     <div className="button-row">
                       <PillButton
-                        active={groupFilter === "all"}
-                        onClick={() => onGroupFilterChange("all")}
+                        active={voicingLayoutFilter === "all"}
+                        onClick={() => onVoicingLayoutFilterChange("all")}
                       >
                         Tutti
                       </PillButton>
-                      {availableGroupPatterns.map((pattern) => (
-                        <PillButton
-                          key={pattern}
-                          active={groupFilter === pattern}
-                          onClick={() => onGroupFilterChange(pattern)}
-                        >
-                          {pattern}
-                        </PillButton>
-                      ))}
+                      <PillButton
+                        active={voicingLayoutFilter === "close"}
+                        onClick={() => onVoicingLayoutFilterChange("close")}
+                      >
+                        Close voicing
+                      </PillButton>
+                      <PillButton
+                        active={voicingLayoutFilter === "spread"}
+                        onClick={() => onVoicingLayoutFilterChange("spread")}
+                      >
+                        Spread voicing
+                      </PillButton>
                     </div>
+                    <p className="helper-text helper-text--small">
+                      Close: corde adiacenti. Spread: almeno un salto di corda. Ora hai
+                      un filtro musicale piu compatto, senza perdere il dettaglio tecnico.
+                    </p>
+                    <div className="inline-stats">
+                      <span className="inline-stat">Close {closeVoicingCount}</span>
+                      <span className="inline-stat">Spread {spreadVoicingCount}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="control-card control-card--wide">
+                  <div className="control-card__stack">
+                    <SectionTitle>Approfondisci per gruppo corde</SectionTitle>
+                    <details className="disclosure-card">
+                      <summary className="disclosure-card__summary">
+                        Gruppo corde: {groupFilter === "all" ? "tutti" : groupFilter}
+                      </summary>
+                      <div className="disclosure-card__body">
+                        <div className="button-row">
+                          <PillButton
+                            active={groupFilter === "all"}
+                            onClick={() => onGroupFilterChange("all")}
+                          >
+                            Tutti
+                          </PillButton>
+                          {availableGroupPatterns.map((pattern) => (
+                            <PillButton
+                              key={pattern}
+                              active={groupFilter === pattern}
+                              onClick={() => onGroupFilterChange(pattern)}
+                            >
+                              {pattern}
+                            </PillButton>
+                          ))}
+                        </div>
+                        <p className="helper-text helper-text--small">
+                          Questo filtro resta disponibile per studiare un gruppo corde
+                          specifico dentro i close o spread voicing.
+                        </p>
+                      </div>
+                    </details>
                   </div>
                 </div>
 

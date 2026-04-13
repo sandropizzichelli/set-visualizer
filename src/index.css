@@ -513,6 +513,65 @@ code,
   font-size: 0.85rem;
 }
 
+.inline-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inline-stat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.disclosure-card {
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.44);
+  overflow: hidden;
+}
+
+.disclosure-card[open] {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.disclosure-card__summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+  color: var(--text-strong);
+  font-weight: 800;
+}
+
+.disclosure-card__summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure-card__summary::after {
+  content: "+";
+  float: right;
+  color: var(--muted-strong);
+}
+
+.disclosure-card[open] .disclosure-card__summary::after {
+  content: "-";
+}
+
+.disclosure-card__body {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
 .panel-header {
   display: flex;
   align-items: flex-start;

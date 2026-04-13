@@ -45,6 +45,7 @@ const DISPLAY_MODES = ["notes", "degrees", "intervals"];
 const TRANSFORM_MODES = ["base", "tn", "tni"];
 const BROWSE_MODES = ["forte", "iv"];
 const FRETBOARD_VIEW_MODES = ["voicing", "prime"];
+const VOICING_LAYOUT_FILTERS = ["all", "close", "spread"];
 const MIN_MAX_SPAN = 2;
 const MAX_MAX_SPAN = 5;
 
@@ -133,6 +134,12 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
       { min: Math.min(noteCount + 1, 12), max: 12 }
     ),
     groupFilter: readStringParam(params, "group", "all"),
+    voicingLayoutFilter: readEnumParam(
+      params,
+      "spacing",
+      VOICING_LAYOUT_FILTERS,
+      "all"
+    ),
     displayMode: readEnumParam(params, "view", DISPLAY_MODES, "notes"),
     bassFilter: readBassFilter(params, "bass", noteCount),
     transformMode: readEnumParam(params, "transform", TRANSFORM_MODES, "base"),
@@ -202,6 +209,9 @@ export default function GenericSetPage({
   );
 
   const [groupFilter, setGroupFilter] = useState(initialUrlState.groupFilter);
+  const [voicingLayoutFilter, setVoicingLayoutFilter] = useState(
+    initialUrlState.voicingLayoutFilter
+  );
   const [displayMode, setDisplayMode] = useState(initialUrlState.displayMode);
   const [bassFilter, setBassFilter] = useState(initialUrlState.bassFilter);
   const [transformMode, setTransformMode] = useState(
@@ -390,21 +400,47 @@ export default function GenericSetPage({
     }));
   }, [activeSet, showComplement, findVoicingFn, maxSpan]);
 
-  const filteredVoicingOccurrences = useMemo(() => {
+  const layoutFilteredVoicingOccurrences = useMemo(() => {
     let list = [...rawVoicings];
 
     if (excludeOpenStrings) {
       list = list.filter((voicing) => voicing.positions.every((position) => position.fret > 0));
     }
 
-    if (groupFilter !== "all") {
-      list = list.filter((voicing) => voicing.stringPattern === groupFilter);
+    if (voicingLayoutFilter === "close") {
+      list = list.filter((voicing) => !voicing.hasSkip);
+    }
+
+    if (voicingLayoutFilter === "spread") {
+      list = list.filter((voicing) => voicing.hasSkip);
+    }
+
+    return list;
+  }, [rawVoicings, excludeOpenStrings, voicingLayoutFilter]);
+
+  const availableGroupPatterns = useMemo(() => {
+    const patterns = new Set(
+      layoutFilteredVoicingOccurrences.map((voicing) => voicing.stringPattern)
+    );
+    return [...patterns].sort();
+  }, [layoutFilteredVoicingOccurrences]);
+
+  const activeGroupFilter = useMemo(() => {
+    if (groupFilter === "all") return "all";
+    return availableGroupPatterns.includes(groupFilter) ? groupFilter : "all";
+  }, [groupFilter, availableGroupPatterns]);
+
+  const filteredVoicingOccurrences = useMemo(() => {
+    let list = [...layoutFilteredVoicingOccurrences];
+
+    if (activeGroupFilter !== "all") {
+      list = list.filter((voicing) => voicing.stringPattern === activeGroupFilter);
     }
 
     list = filterByBassDegree(list, bassFilter, activeSet?.degreeMap);
 
     return list;
-  }, [rawVoicings, excludeOpenStrings, groupFilter, bassFilter, activeSet]);
+  }, [layoutFilteredVoicingOccurrences, activeGroupFilter, bassFilter, activeSet]);
 
   const filteredVoicings = useMemo(
     () => groupVoicingsByStructure(filteredVoicingOccurrences),
@@ -702,10 +738,27 @@ export default function GenericSetPage({
 
   const selectedVoicing = filteredVoicings[activeSelectedVoicingIndex] || null;
 
-  const availableGroupPatterns = useMemo(() => {
-    const patterns = new Set(rawVoicings.map((voicing) => voicing.stringPattern));
-    return [...patterns].sort();
-  }, [rawVoicings]);
+  const closeVoicingCount = useMemo(
+    () =>
+      rawVoicings.filter(
+        (voicing) =>
+          !voicing.hasSkip &&
+          (!excludeOpenStrings ||
+            voicing.positions.every((position) => position.fret > 0))
+      ).length,
+    [rawVoicings, excludeOpenStrings]
+  );
+
+  const spreadVoicingCount = useMemo(
+    () =>
+      rawVoicings.filter(
+        (voicing) =>
+          voicing.hasSkip &&
+          (!excludeOpenStrings ||
+            voicing.positions.every((position) => position.fret > 0))
+      ).length,
+    [rawVoicings, excludeOpenStrings]
+  );
 
   const resetPrimaryVoicingSelection = ({ hideAll = true } = {}) => {
     setSelected(0);
@@ -841,6 +894,12 @@ export default function GenericSetPage({
     setSelected(0);
   };
 
+  const handleVoicingLayoutFilterChange = (value) => {
+    setVoicingLayoutFilter(value);
+    setGroupFilter("all");
+    setSelected(0);
+  };
+
   const handleExcludeOpenStringsChange = (checked) => {
     setExcludeOpenStrings(checked);
     setSelected(0);
@@ -933,7 +992,16 @@ export default function GenericSetPage({
 
       setSearchParam(params, "subset", subsetTargetCardinality);
       setSearchParam(params, "superset", supersetTargetCardinality);
-      setSearchParam(params, "group", groupFilter === "all" ? null : groupFilter);
+      setSearchParam(
+        params,
+        "group",
+        activeGroupFilter === "all" ? null : activeGroupFilter
+      );
+      setSearchParam(
+        params,
+        "spacing",
+        voicingLayoutFilter === "all" ? null : voicingLayoutFilter
+      );
       setSearchParam(params, "view", displayMode === "notes" ? null : displayMode);
       setSearchParam(
         params,
@@ -991,7 +1059,8 @@ export default function GenericSetPage({
     excludeOpenStrings,
     subsetTargetCardinality,
     supersetTargetCardinality,
-    groupFilter,
+    activeGroupFilter,
+    voicingLayoutFilter,
     displayMode,
     activeSelectedIntervalClasses,
     bassFilter,
@@ -1039,8 +1108,12 @@ export default function GenericSetPage({
           supersetCardinalityOptions={supersetCardinalityOptions}
           supersetTargetCardinality={supersetTargetCardinality}
           onSupersetTargetCardinalityChange={handleSupersetTargetCardinalityChange}
-          groupFilter={groupFilter}
+          groupFilter={activeGroupFilter}
+          voicingLayoutFilter={voicingLayoutFilter}
+          onVoicingLayoutFilterChange={handleVoicingLayoutFilterChange}
           availableGroupPatterns={availableGroupPatterns}
+          closeVoicingCount={closeVoicingCount}
+          spreadVoicingCount={spreadVoicingCount}
           onGroupFilterChange={handleGroupFilterChange}
           displayMode={displayMode}
           onDisplayModeChange={setDisplayMode}
