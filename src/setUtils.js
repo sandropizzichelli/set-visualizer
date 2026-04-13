@@ -563,9 +563,11 @@ export function getSubsetClasses(pcs, options = {}) {
     const key = pf.join(",");
 
     if (!grouped.has(key)) {
+      const forteName = findForteNumberByPf(pf);
       grouped.set(key, {
         primeForm: pf,
-        forteName: findForteNumberByPf(pf),
+        forteName,
+        iv: forteName ? getCombinedForteReference()[forteName]?.iv || "" : "",
         cardinality: pf.length,
         concreteCount: 0,
         members: [],
@@ -621,9 +623,11 @@ export function getSupersetClasses(pcs, targetCardinality) {
     const key = pf.join(",");
 
     if (!grouped.has(key)) {
+      const forteName = findForteNumberByPf(pf);
       grouped.set(key, {
         primeForm: pf,
-        forteName: findForteNumberByPf(pf),
+        forteName,
+        iv: forteName ? getCombinedForteReference()[forteName]?.iv || "" : "",
         cardinality: pf.length,
         concreteCount: 0,
         members: [],

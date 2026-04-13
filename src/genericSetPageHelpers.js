@@ -35,6 +35,7 @@ export function getClassKey(item) {
 }
 
 export function formatIntervalVector(intervalVector) {
+  if (!intervalVector) return "n.d.";
   return `⟨${intervalVector.split("").join(",")}⟩`;
 }
 
@@ -70,6 +71,7 @@ export function buildIntervalLegend(orderedPcs) {
 }
 
 export function buildIntervalClassBreakdown(intervalVector) {
+  if (!intervalVector) return [];
   return intervalVector.split("").map((count, index) => ({
     ic: index + 1,
     count: Number(count),
