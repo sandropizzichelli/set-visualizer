@@ -23,6 +23,7 @@ import GenericSetControlsPanel from "./GenericSetControlsPanel";
 import GenericSetFretboardPanel from "./GenericSetFretboardPanel";
 import GenericSetResultsPanel from "./GenericSetResultsPanel";
 import {
+  buildOccurrenceSummary,
   buildIntervalClassBreakdown,
   buildIntervalClassPitchClassMap,
   buildIntervalLegend,
@@ -46,8 +47,14 @@ const TRANSFORM_MODES = ["base", "tn", "tni"];
 const BROWSE_MODES = ["forte", "iv"];
 const FRETBOARD_VIEW_MODES = ["voicing", "prime"];
 const VOICING_LAYOUT_FILTERS = ["all", "close", "spread"];
+const DEFAULT_DISPLAY_MODE = "degrees";
+const DEFAULT_FRETBOARD_VIEW_MODE = "prime";
 const MIN_MAX_SPAN = 2;
 const MAX_MAX_SPAN = 5;
+
+function getAvailableVoicingLayoutFilters(noteCount) {
+  return noteCount >= 6 ? ["all", "close"] : VOICING_LAYOUT_FILTERS;
+}
 
 function readBassFilter(params, name, noteCount) {
   const value = params.get(name);
@@ -96,6 +103,7 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
   const intervalVectorOptions = buildIntervalVectorOptions(keys, dataMap);
   const defaultIntervalVector =
     dataMap[selectedForte]?.iv || intervalVectorOptions[0] || "";
+  const availableVoicingLayoutFilters = getAvailableVoicingLayoutFilters(noteCount);
 
   return {
     browseMode: readEnumParam(params, "browse", BROWSE_MODES, "forte"),
@@ -115,7 +123,7 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
       params,
       "neck",
       FRETBOARD_VIEW_MODES,
-      "voicing"
+      DEFAULT_FRETBOARD_VIEW_MODE
     ),
     showAll: readBooleanParam(params, "showAll", false),
     showComplement: readBooleanParam(params, "complement", false),
@@ -137,10 +145,15 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
     voicingLayoutFilter: readEnumParam(
       params,
       "spacing",
-      VOICING_LAYOUT_FILTERS,
+      availableVoicingLayoutFilters,
       "all"
     ),
-    displayMode: readEnumParam(params, "view", DISPLAY_MODES, "notes"),
+    displayMode: readEnumParam(
+      params,
+      "view",
+      DISPLAY_MODES,
+      DEFAULT_DISPLAY_MODE
+    ),
     bassFilter: readBassFilter(params, "bass", noteCount),
     transformMode: readEnumParam(params, "transform", TRANSFORM_MODES, "base"),
     transformAmount: readIntegerParam(params, "amount", 0, {
@@ -169,8 +182,6 @@ function getVoicingFinderByCardinality(cardinality) {
 }
 
 export default function GenericSetPage({
-  title,
-  description,
   keyLabel,
   keys,
   dataMap,
@@ -237,17 +248,19 @@ export default function GenericSetPage({
   const [selectedIntervalClasses, setSelectedIntervalClasses] = useState(
     initialUrlState.selectedIntervalClasses
   );
-  const [copyLinkStatus, setCopyLinkStatus] = useState("idle");
 
-  useEffect(() => {
-    if (copyLinkStatus === "idle") return undefined;
+  const availableVoicingLayoutFilters = useMemo(
+    () => getAvailableVoicingLayoutFilters(noteCount),
+    [noteCount]
+  );
 
-    const timeoutId = window.setTimeout(() => {
-      setCopyLinkStatus("idle");
-    }, 2200);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [copyLinkStatus]);
+  const activeVoicingLayoutFilter = useMemo(
+    () =>
+      availableVoicingLayoutFilters.includes(voicingLayoutFilter)
+        ? voicingLayoutFilter
+        : "all",
+    [availableVoicingLayoutFilters, voicingLayoutFilter]
+  );
 
   const sortedKeys = useMemo(() => {
     return [...keys].sort((a, b) => {
@@ -407,16 +420,16 @@ export default function GenericSetPage({
       list = list.filter((voicing) => voicing.positions.every((position) => position.fret > 0));
     }
 
-    if (voicingLayoutFilter === "close") {
+    if (activeVoicingLayoutFilter === "close") {
       list = list.filter((voicing) => !voicing.hasSkip);
     }
 
-    if (voicingLayoutFilter === "spread") {
+    if (activeVoicingLayoutFilter === "spread") {
       list = list.filter((voicing) => voicing.hasSkip);
     }
 
     return list;
-  }, [rawVoicings, excludeOpenStrings, voicingLayoutFilter]);
+  }, [rawVoicings, excludeOpenStrings, activeVoicingLayoutFilter]);
 
   const availableGroupPatterns = useMemo(() => {
     const patterns = new Set(
@@ -678,6 +691,10 @@ export default function GenericSetPage({
     [selectedAnalysisClass]
   );
 
+  const canRenderAnalysisPrimaryForm =
+    Boolean(selectedAnalysisClass?.primeForm?.length) &&
+    Boolean(analysisPrimaryFormVoicing);
+
   const analysisPrimaryFormDegreeMap = useMemo(() => {
     if (!selectedAnalysisClass?.primeForm?.length) return null;
 
@@ -726,6 +743,45 @@ export default function GenericSetPage({
 
   const selectedAnalysisVoicing =
     analysisFilteredVoicings[activeSelectedAnalysisVoicingIndex] || null;
+
+  const selectedOccurrenceSummary = useMemo(
+    () =>
+      fretboardViewMode === "prime" || analysisMode === "voicings"
+        ? null
+        : buildOccurrenceSummary(
+            analysisMode,
+            activeSet,
+            selectedAnalysisClass,
+            selectedAnalysisMember
+          ),
+    [
+      fretboardViewMode,
+      analysisMode,
+      activeSet,
+      selectedAnalysisClass,
+      selectedAnalysisMember,
+    ]
+  );
+
+  const analysisPcRoleMap = useMemo(() => {
+    const map = new Map();
+
+    selectedOccurrenceSummary?.retainedPcs.forEach((pc) => {
+      map.set(pc, "core");
+    });
+
+    selectedOccurrenceSummary?.addedPcs.forEach((pc) => {
+      map.set(pc, "added");
+    });
+
+    selectedOccurrenceSummary?.missingPcs.forEach((pc) => {
+      if (!map.has(pc)) {
+        map.set(pc, "missing");
+      }
+    });
+
+    return map;
+  }, [selectedOccurrenceSummary]);
 
   const activeSelectedVoicingIndex = useMemo(() => {
     if (!filteredVoicings.length) return 0;
@@ -811,6 +867,21 @@ export default function GenericSetPage({
     }
   };
 
+  const resetSetPresentationDefaults = () => {
+    setFretboardViewMode(DEFAULT_FRETBOARD_VIEW_MODE);
+    setDisplayMode(DEFAULT_DISPLAY_MODE);
+    setAnalysisMode("voicings");
+    setSelectedIntervalClasses([]);
+    setShowComplement(false);
+    setShowAll(false);
+    setAnalysisShowAllVoicings(false);
+    setSelected(0);
+    setSelectedAnalysisClassKey(null);
+    setSelectedAnalysisMemberIndex(0);
+    setSelectedAnalysisVoicingIndex(0);
+    setAnalysisBassFilter("all");
+  };
+
   const handleBrowseModeChange = (mode) => {
     setBrowseMode(mode);
 
@@ -835,27 +906,22 @@ export default function GenericSetPage({
   };
 
   const handleSelectedForteChange = (forte) => {
+    resetSetPresentationDefaults();
     setSelectedForte(forte);
     if (dataMap[forte]?.iv) {
       setSelectedIntervalVector(dataMap[forte].iv);
     }
-    resetPrimaryVoicingSelection();
-    setShowComplement(false);
-    resetAnalysisClassSelection({ clearClass: true });
   };
 
   const handleSelectedIntervalVectorChange = (intervalVector) => {
     const matchingKeys = intervalVectorMap.get(intervalVector) || [];
 
+    resetSetPresentationDefaults();
     setSelectedIntervalVector(intervalVector);
 
     if (matchingKeys.length) {
       setSelectedForte(matchingKeys[0]);
     }
-
-    resetPrimaryVoicingSelection();
-    setShowComplement(false);
-    resetAnalysisClassSelection({ clearClass: true });
   };
 
   const handleToggleIntervalClass = (intervalClass) => {
@@ -933,37 +999,140 @@ export default function GenericSetPage({
     }
   };
 
-  const handleCopyLink = async () => {
-    if (typeof window === "undefined") return;
-
-    const url = window.location.href;
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        const tempTextarea = document.createElement("textarea");
-        tempTextarea.value = url;
-        tempTextarea.setAttribute("readonly", "");
-        tempTextarea.style.position = "absolute";
-        tempTextarea.style.left = "-9999px";
-        document.body.appendChild(tempTextarea);
-        tempTextarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempTextarea);
-      }
-
-      setCopyLinkStatus("copied");
-    } catch {
-      setCopyLinkStatus("error");
-    }
-  };
-
   const canRenderAnalysisVoicings =
     Boolean(selectedAnalysisMember) &&
     selectedAnalysisMember.length >= 3 &&
     selectedAnalysisMember.length <= 6 &&
     Boolean(analysisVoicingFinder);
+
+  const heroFretboardState = useMemo(() => {
+    if (showComplement) {
+      return {
+        badge: "Complementare",
+        props: {
+          voicing: null,
+          allTargetPcs: complementData ? complementData.pcs : [],
+          allVoicings: [],
+          showAll: false,
+          displayMode: "notes",
+          degreeMap: null,
+          intervalMap: null,
+          highlightAllAsActive: true,
+        },
+      };
+    }
+
+    if (analysisMode === "voicings") {
+      const showingPrimaryForm = fretboardViewMode === "prime";
+
+      return {
+        badge: showingPrimaryForm
+          ? showAll
+            ? "Forme sovrapposte"
+            : "Forma primaria"
+          : showAll
+            ? "Tutte le forme"
+            : "Forma selezionata",
+        props: {
+          voicing: showingPrimaryForm ? primaryFormVoicing : selectedVoicing,
+          allTargetPcs: showingPrimaryForm
+            ? filteredPrimaryFormTargetPcs
+            : filteredPrimaryTargetPcs,
+          allVoicings: showingPrimaryForm ? primaryFormVoicings : filteredVoicings,
+          showAll,
+          displayMode,
+          degreeMap: showingPrimaryForm ? primaryFormDegreeMap : activeSet?.degreeMap,
+          intervalMap: showingPrimaryForm
+            ? primaryFormIntervalMap
+            : activeSet?.intervalMap,
+          selectedIntervalClasses: activeSelectedIntervalClasses,
+          showTargetMap: !showingPrimaryForm,
+          expandOccurrencesInShowAll: showingPrimaryForm,
+        },
+      };
+    }
+
+    const showingPrimaryForm = fretboardViewMode === "prime";
+
+    return {
+      badge: showingPrimaryForm
+        ? analysisShowAllVoicings
+          ? "Prime form sovrapposte"
+          : "Prime form"
+        : analysisShowAllVoicings
+          ? "Posizioni sovrapposte"
+          : "Occorrenza selezionata",
+      props: {
+        voicing: showingPrimaryForm
+          ? canRenderAnalysisPrimaryForm
+            ? analysisPrimaryFormVoicing
+            : null
+          : canRenderAnalysisVoicings
+            ? selectedAnalysisVoicing
+            : null,
+        allTargetPcs: showingPrimaryForm
+          ? filteredAnalysisPrimaryFormTargetPcs
+          : filteredAnalysisTargetPcs,
+        allVoicings: showingPrimaryForm
+          ? analysisPrimaryFormVoicings
+          : !canRenderAnalysisVoicings
+            ? []
+            : analysisFilteredVoicings,
+        showAll: showingPrimaryForm
+          ? analysisShowAllVoicings
+          : !canRenderAnalysisVoicings
+            ? false
+            : analysisShowAllVoicings,
+        displayMode,
+        degreeMap: showingPrimaryForm
+          ? analysisPrimaryFormDegreeMap
+          : analysisDegreeMap,
+        intervalMap: showingPrimaryForm
+          ? analysisPrimaryFormIntervalMap
+          : analysisIntervalMap,
+        selectedIntervalClasses: activeSelectedIntervalClasses,
+        showTargetMap: !showingPrimaryForm,
+        extraTargetPcs:
+          showingPrimaryForm || !selectedOccurrenceSummary
+            ? []
+            : selectedOccurrenceSummary.missingPcs,
+        pcRoleMap: showingPrimaryForm ? null : analysisPcRoleMap,
+        expandOccurrencesInShowAll: showingPrimaryForm,
+      },
+    };
+  }, [
+    showComplement,
+    complementData,
+    analysisMode,
+    fretboardViewMode,
+    showAll,
+    primaryFormVoicing,
+    selectedVoicing,
+    filteredPrimaryFormTargetPcs,
+    filteredPrimaryTargetPcs,
+    primaryFormVoicings,
+    filteredVoicings,
+    displayMode,
+    primaryFormDegreeMap,
+    activeSet,
+    primaryFormIntervalMap,
+    activeSelectedIntervalClasses,
+    analysisShowAllVoicings,
+    canRenderAnalysisPrimaryForm,
+    analysisPrimaryFormVoicing,
+    canRenderAnalysisVoicings,
+    selectedAnalysisVoicing,
+    filteredAnalysisPrimaryFormTargetPcs,
+    filteredAnalysisTargetPcs,
+    analysisPrimaryFormVoicings,
+    analysisFilteredVoicings,
+    analysisPrimaryFormDegreeMap,
+    analysisDegreeMap,
+    analysisPrimaryFormIntervalMap,
+    analysisIntervalMap,
+    selectedOccurrenceSummary,
+    analysisPcRoleMap,
+  ]);
 
   useEffect(() => {
     replaceSearchParams((params) => {
@@ -978,7 +1147,9 @@ export default function GenericSetPage({
       setSearchParam(
         params,
         "neck",
-        fretboardViewMode === "voicing" ? null : fretboardViewMode
+        fretboardViewMode === DEFAULT_FRETBOARD_VIEW_MODE
+          ? null
+          : fretboardViewMode
       );
       setSearchParam(params, "analysis", analysisMode);
 
@@ -996,9 +1167,13 @@ export default function GenericSetPage({
       setSearchParam(
         params,
         "spacing",
-        voicingLayoutFilter === "all" ? null : voicingLayoutFilter
+        activeVoicingLayoutFilter === "all" ? null : activeVoicingLayoutFilter
       );
-      setSearchParam(params, "view", displayMode === "notes" ? null : displayMode);
+      setSearchParam(
+        params,
+        "view",
+        displayMode === DEFAULT_DISPLAY_MODE ? null : displayMode
+      );
       setSearchParam(
         params,
         "ic",
@@ -1056,7 +1231,7 @@ export default function GenericSetPage({
     subsetTargetCardinality,
     supersetTargetCardinality,
     activeGroupFilter,
-    voicingLayoutFilter,
+    activeVoicingLayoutFilter,
     displayMode,
     activeSelectedIntervalClasses,
     bassFilter,
@@ -1074,12 +1249,9 @@ export default function GenericSetPage({
     <div className="set-page">
       <div className="set-page__inner">
         <GenericSetControlsPanel
-          title={title}
-          description={description}
           keyLabel={keyLabel}
           browseMode={browseMode}
-          copyLinkStatus={copyLinkStatus}
-          onCopyLink={handleCopyLink}
+          heroFretboardState={heroFretboardState}
           onBrowseModeChange={handleBrowseModeChange}
           sortedKeys={sortedKeys}
           dataMap={dataMap}
@@ -1105,7 +1277,8 @@ export default function GenericSetPage({
           supersetTargetCardinality={supersetTargetCardinality}
           onSupersetTargetCardinalityChange={handleSupersetTargetCardinalityChange}
           groupFilter={activeGroupFilter}
-          voicingLayoutFilter={voicingLayoutFilter}
+          voicingLayoutFilter={activeVoicingLayoutFilter}
+          availableVoicingLayoutFilters={availableVoicingLayoutFilters}
           onVoicingLayoutFilterChange={handleVoicingLayoutFilterChange}
           availableGroupPatterns={availableGroupPatterns}
           closeVoicingCount={closeVoicingCount}
@@ -1130,6 +1303,7 @@ export default function GenericSetPage({
         <div className="set-page__grid">
           <GenericSetFretboardPanel
           showComplement={showComplement}
+          hideFretboardVisual={true}
           analysisMode={analysisMode}
           fretboardViewMode={fretboardViewMode}
           browseMode={browseMode}

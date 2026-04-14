@@ -1,4 +1,5 @@
 import React from "react";
+import Fretboard from "./Fretboard";
 import {
   PillButton,
   SectionTitle,
@@ -10,25 +11,10 @@ import {
   getCardinalityLabel,
 } from "./genericSetPageHelpers";
 
-function getAnalysisLabel(analysisMode) {
-  if (analysisMode === "subsets") return "Subset-class";
-  if (analysisMode === "supersets") return "Superset-class";
-  return "Voicing";
-}
-
-function getCopyLinkLabel(copyLinkStatus) {
-  if (copyLinkStatus === "copied") return "Link copiato";
-  if (copyLinkStatus === "error") return "Riprova a copiare";
-  return "Copia link condivisibile";
-}
-
 export default function GenericSetControlsPanel({
-  title,
-  description,
   keyLabel,
   browseMode,
-  copyLinkStatus,
-  onCopyLink,
+  heroFretboardState,
   onBrowseModeChange,
   sortedKeys,
   dataMap,
@@ -55,6 +41,7 @@ export default function GenericSetControlsPanel({
   onSupersetTargetCardinalityChange,
   groupFilter,
   voicingLayoutFilter,
+  availableVoicingLayoutFilters,
   onVoicingLayoutFilterChange,
   availableGroupPatterns,
   closeVoicingCount,
@@ -78,51 +65,23 @@ export default function GenericSetControlsPanel({
   return (
     <div className="set-panel set-panel--hero">
       <div className="set-hero">
-        <div>
+        <div className="set-hero__main">
           <div className="eyebrow">Set-class explorer</div>
-          <h1>{title}</h1>
-          <p className="set-hero__description">{description}</p>
-        </div>
+          <div className="hero-fretboard-card">
+            <div className="hero-fretboard-card__head">
+              <div className="section-title">Manico attivo</div>
+              {heroFretboardState?.badge && (
+                <span className="class-badge">{heroFretboardState.badge}</span>
+              )}
+            </div>
 
-        <div className="hero-side">
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <span>Cardinalità</span>
-              <strong>{getCardinalityLabel(noteCount)}</strong>
-            </div>
-            <div className="hero-stat">
-              <span>Accesso</span>
-              <strong>{browseMode === "forte" ? "Set-class" : "Interval vector"}</strong>
-            </div>
-            <div className="hero-stat">
-              <span>Vista attiva</span>
-              <strong>{showComplement ? "Complementare" : noteName}</strong>
-            </div>
-            <div className="hero-stat">
-              <span>Lettura</span>
-              <strong>
-                {showComplement ? "Profilo analitico" : getAnalysisLabel(analysisMode)}
-              </strong>
-            </div>
-          </div>
-
-          <div className="hero-actions">
-            <button
-              type="button"
-              onClick={onCopyLink}
-              className={
-                copyLinkStatus === "copied"
-                  ? "secondary-button secondary-button--success"
-                  : copyLinkStatus === "error"
-                    ? "secondary-button secondary-button--error"
-                    : "secondary-button"
-              }
-            >
-              {getCopyLinkLabel(copyLinkStatus)}
-            </button>
-            <p className="hero-actions__hint">
-              Il link mantiene pagina, modalità, classe, trasformazioni e filtri correnti.
-            </p>
+            {heroFretboardState?.props ? (
+              <Fretboard {...heroFretboardState.props} />
+            ) : (
+              <p className="helper-text">
+                Seleziona una classe o un&apos;occorrenza per visualizzare il manico qui in alto.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -254,16 +213,16 @@ export default function GenericSetControlsPanel({
                 <SectionTitle>Manico</SectionTitle>
                 <div className="segmented-row">
                   <PillButton
-                    active={fretboardViewMode === "voicing"}
-                    onClick={() => onFretboardViewModeChange("voicing")}
-                  >
-                    Voicing
-                  </PillButton>
-                  <PillButton
                     active={fretboardViewMode === "prime"}
                     onClick={() => onFretboardViewModeChange("prime")}
                   >
                     Forma primaria
+                  </PillButton>
+                  <PillButton
+                    active={fretboardViewMode === "voicing"}
+                    onClick={() => onFretboardViewModeChange("voicing")}
+                  >
+                    Voicing
                   </PillButton>
                 </div>
               </div>
@@ -352,20 +311,25 @@ export default function GenericSetControlsPanel({
                       >
                         Close voicing
                       </PillButton>
-                      <PillButton
-                        active={voicingLayoutFilter === "spread"}
-                        onClick={() => onVoicingLayoutFilterChange("spread")}
-                      >
-                        Spread voicing
-                      </PillButton>
+                      {availableVoicingLayoutFilters.includes("spread") && (
+                        <PillButton
+                          active={voicingLayoutFilter === "spread"}
+                          onClick={() => onVoicingLayoutFilterChange("spread")}
+                        >
+                          Spread voicing
+                        </PillButton>
+                      )}
                     </div>
                     <p className="helper-text helper-text--small">
-                      Close: corde adiacenti. Spread: almeno un salto di corda. Ora hai
-                      un filtro musicale piu compatto, senza perdere il dettaglio tecnico.
+                      {availableVoicingLayoutFilters.includes("spread")
+                        ? "Close: corde adiacenti. Spread: almeno un salto di corda. Ora hai un filtro musicale piu compatto, senza perdere il dettaglio tecnico."
+                        : "Negli esacordi il filtro si concentra sulle forme piu utili: tutte oppure close voicing."}
                     </p>
                     <div className="inline-stats">
                       <span className="inline-stat">Close {closeVoicingCount}</span>
-                      <span className="inline-stat">Spread {spreadVoicingCount}</span>
+                      {availableVoicingLayoutFilters.includes("spread") && (
+                        <span className="inline-stat">Spread {spreadVoicingCount}</span>
+                      )}
                     </div>
                   </div>
                 </div>
