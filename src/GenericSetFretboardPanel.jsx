@@ -204,6 +204,10 @@ export default function GenericSetFretboardPanel({
   analysisIntervalClassBreakdown,
   complementData,
 }) {
+  if (hideFretboardVisual) {
+    return null;
+  }
+
   const showIntervalLegend = browseMode === "iv" || displayMode === "intervals";
   const showingPrimaryForm = fretboardViewMode === "prime";
   const canRenderAnalysisPrimaryForm =

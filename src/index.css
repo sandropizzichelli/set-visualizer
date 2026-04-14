@@ -245,7 +245,7 @@ code,
 
 .set-page__grid {
   display: grid;
-  grid-template-columns: minmax(320px, 0.92fr) minmax(380px, 1.08fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   align-items: start;
 }
