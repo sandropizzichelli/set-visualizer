@@ -210,7 +210,7 @@ export default function GenericSetFretboardPanel({
     Boolean(selectedAnalysisClass?.primeForm?.length) &&
     Boolean(analysisPrimaryFormVoicing);
   const selectedOccurrenceSummary =
-    !showingPrimaryForm && analysisMode !== "voicings"
+    !showingPrimaryForm && analysisMode
       ? buildOccurrenceSummary(
           analysisMode,
           activeSet,
@@ -247,7 +247,7 @@ export default function GenericSetFretboardPanel({
       </div>
 
       {!showComplement ? (
-        analysisMode === "voicings" ? (
+        !analysisMode ? (
           <div className="panel-stack panel-stack--spacious">
             <p className="helper-text">
               {hideFretboardVisual
@@ -259,7 +259,7 @@ export default function GenericSetFretboardPanel({
                   : `Le caselle attenuate appartengono al ${noteName} trasformato. Le caselle evidenziate mostrano la forma selezionata, oppure tutte le forme se l'opzione e attiva.`}
             </p>
 
-            {activeSet && (
+            {activeSet && !hideFretboardVisual && (
               <div className="analysis-card analysis-card--compact">
                 <div className="panel-stack">
                   <div className="info-note">
@@ -345,7 +345,7 @@ export default function GenericSetFretboardPanel({
                   : "Seleziona una classe a destra. Il manico mostra l&apos;occorrenza concreta scelta e, quando possibile, i suoi voicing o rivolti."}
             </p>
 
-            {selectedAnalysisClass && (
+            {selectedAnalysisClass && !hideFretboardVisual && (
               <div className="analysis-card analysis-card--compact">
                 <div className="panel-stack">
                   <div className="info-note">

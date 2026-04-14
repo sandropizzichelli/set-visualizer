@@ -28,6 +28,9 @@ import {
   buildIntervalClassPitchClassMap,
   buildIntervalLegend,
   buildIntervalMapFromOrderedPcs,
+  formatDegreeList,
+  formatIntervalVector,
+  formatPitchClassList,
   getClassKey,
 } from "./genericSetPageHelpers";
 import {
@@ -41,7 +44,7 @@ import {
   setSearchParam,
 } from "./urlState";
 
-const ANALYSIS_MODES = ["voicings", "subsets", "supersets"];
+const ANALYSIS_MODES = ["subsets", "supersets"];
 const DISPLAY_MODES = ["notes", "degrees", "intervals"];
 const TRANSFORM_MODES = ["base", "tn", "tni"];
 const BROWSE_MODES = ["forte", "iv"];
@@ -128,7 +131,7 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
     showAll: readBooleanParam(params, "showAll", false),
     showComplement: readBooleanParam(params, "complement", false),
     excludeOpenStrings: readBooleanParam(params, "excludeOpen", false),
-    analysisMode: readEnumParam(params, "analysis", ANALYSIS_MODES, "voicings"),
+    analysisMode: readEnumParam(params, "analysis", ANALYSIS_MODES, null),
     subsetTargetCardinality: readIntegerParam(
       params,
       "subset",
@@ -179,6 +182,12 @@ function getVoicingFinderByCardinality(cardinality) {
   if (cardinality === 5) return findPentachordVoicings;
   if (cardinality === 6) return findHexachordVoicings;
   return null;
+}
+
+function getDisplayModeLabel(displayMode, degreeButtonLabel) {
+  if (displayMode === "notes") return "Note";
+  if (displayMode === "degrees") return degreeButtonLabel;
+  return "Intervalli";
 }
 
 export default function GenericSetPage({
@@ -533,7 +542,7 @@ export default function GenericSetPage({
   }, [analysisMode, subsetClasses, supersetClasses]);
 
   const selectedAnalysisClass = useMemo(() => {
-    if (analysisMode === "voicings" || !analysisClasses.length) return null;
+    if (!analysisMode || !analysisClasses.length) return null;
     return (
       analysisClasses.find((item) => getClassKey(item) === selectedAnalysisClassKey) ||
       analysisClasses[0]
@@ -591,7 +600,7 @@ export default function GenericSetPage({
 
   const activeSelectedIntervalClasses = useMemo(() => {
     const availableIntervalClasses =
-      analysisMode === "voicings"
+      !analysisMode
         ? activeSet?.intervalClassBreakdown || []
         : analysisIntervalClassBreakdown;
 
@@ -744,9 +753,9 @@ export default function GenericSetPage({
   const selectedAnalysisVoicing =
     analysisFilteredVoicings[activeSelectedAnalysisVoicingIndex] || null;
 
-  const selectedOccurrenceSummary = useMemo(
+  const analysisOccurrenceSummary = useMemo(
     () =>
-      fretboardViewMode === "prime" || analysisMode === "voicings"
+      !analysisMode
         ? null
         : buildOccurrenceSummary(
             analysisMode,
@@ -755,12 +764,16 @@ export default function GenericSetPage({
             selectedAnalysisMember
           ),
     [
-      fretboardViewMode,
       analysisMode,
       activeSet,
       selectedAnalysisClass,
       selectedAnalysisMember,
     ]
+  );
+
+  const selectedOccurrenceSummary = useMemo(
+    () => (fretboardViewMode === "prime" ? null : analysisOccurrenceSummary),
+    [fretboardViewMode, analysisOccurrenceSummary]
   );
 
   const analysisPcRoleMap = useMemo(() => {
@@ -870,7 +883,7 @@ export default function GenericSetPage({
   const resetSetPresentationDefaults = () => {
     setFretboardViewMode(DEFAULT_FRETBOARD_VIEW_MODE);
     setDisplayMode(DEFAULT_DISPLAY_MODE);
-    setAnalysisMode("voicings");
+    setAnalysisMode(null);
     setSelectedIntervalClasses([]);
     setShowComplement(false);
     setShowAll(false);
@@ -937,7 +950,7 @@ export default function GenericSetPage({
   };
 
   const handleAnalysisModeChange = (mode) => {
-    setAnalysisMode(mode);
+    setAnalysisMode((current) => (current === mode ? null : mode));
     resetAnalysisClassSelection({ clearClass: true });
   };
 
@@ -1022,7 +1035,7 @@ export default function GenericSetPage({
       };
     }
 
-    if (analysisMode === "voicings") {
+    if (!analysisMode) {
       const showingPrimaryForm = fretboardViewMode === "prime";
 
       return {
@@ -1134,6 +1147,108 @@ export default function GenericSetPage({
     analysisPcRoleMap,
   ]);
 
+  const heroSummaryState = useMemo(() => {
+    const badge = showComplement
+      ? "Complementare"
+      : activeSet?.transformLabel || null;
+
+    if (showComplement) {
+      return {
+        title: "Sintesi attiva",
+        badge,
+        items: complementData
+          ? [
+              { label: "Classe", value: complementData.forte },
+              { label: "Prime form", value: `[${complementData.pf}]` },
+              { label: "IV", value: formatIntervalVector(complementData.iv) },
+            ]
+          : [],
+        note:
+          activeSet && complementData
+            ? `Complementare del ${activeSet.forteName}`
+            : null,
+      };
+    }
+
+    if (!activeSet) {
+      return {
+        title: "Sintesi attiva",
+        badge,
+        items: [],
+        note: null,
+      };
+    }
+
+    if (!analysisMode) {
+      return {
+        title: "Sintesi attiva",
+        badge,
+        items: [
+          { label: "Classe", value: activeSet.forteName },
+          { label: "Prime form", value: `[${activeSet.primeForm.join(",")}]` },
+          {
+            label: "Ordine attivo",
+            value: `[${activeSet.transformedPrimeForm.join(",")}]`,
+          },
+          { label: "IV", value: formatIntervalVector(activeSet.iv) },
+        ],
+        note: [
+          fretboardViewMode === "prime" ? "Forma primaria" : "Voicing",
+          getDisplayModeLabel(displayMode, degreeButtonLabel),
+          browseMode === "iv"
+            ? `${intervalVectorFamilyClasses.length} classi nella famiglia IV`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      };
+    }
+
+    return {
+      title: analysisMode === "subsets" ? "Sintesi subset" : "Sintesi superset",
+      badge,
+      items: [
+        { label: "Classe madre", value: activeSet.forteName },
+        {
+          label: "Classe attiva",
+          value: selectedAnalysisClass?.forteName || "n.d.",
+        },
+        {
+          label: "Prime form",
+          value: selectedAnalysisClass
+            ? `[${selectedAnalysisClass.primeForm.join(",")}]`
+            : "n.d.",
+        },
+        {
+          label: "Relazione",
+          value: analysisOccurrenceSummary?.classTransform || "n.d.",
+        },
+      ],
+      note: selectedAnalysisMember
+        ? analysisMode === "subsets"
+          ? `Occorrenza [${selectedAnalysisMember.join(",")}] · Gradi presenti ${formatDegreeList(
+              analysisOccurrenceSummary?.retainedDegrees || []
+            )}`
+          : `Occorrenza [${selectedAnalysisMember.join(",")}] · Note aggiunte ${formatPitchClassList(
+              analysisOccurrenceSummary?.addedPcs || []
+            )}`
+        : null,
+    };
+  }, [
+    showComplement,
+    activeSet,
+    complementData,
+    analysisMode,
+    selectedAnalysisClass,
+    selectedAnalysisMember,
+    analysisOccurrenceSummary,
+    fretboardViewMode,
+    displayMode,
+    degreeButtonLabel,
+    browseMode,
+    intervalVectorFamilyClasses,
+  ]);
+
   useEffect(() => {
     replaceSearchParams((params) => {
       setSearchParam(params, "browse", browseMode === "forte" ? null : browseMode);
@@ -1191,7 +1306,7 @@ export default function GenericSetPage({
       );
       setSearchParam(params, "voicing", activeSelectedVoicingIndex || null);
 
-      if (analysisMode === "voicings") {
+      if (!analysisMode) {
         params.delete("aclass");
         params.delete("amember");
         params.delete("abass");
@@ -1252,6 +1367,7 @@ export default function GenericSetPage({
           keyLabel={keyLabel}
           browseMode={browseMode}
           heroFretboardState={heroFretboardState}
+          heroSummaryState={heroSummaryState}
           onBrowseModeChange={handleBrowseModeChange}
           sortedKeys={sortedKeys}
           dataMap={dataMap}

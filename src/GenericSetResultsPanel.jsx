@@ -129,7 +129,7 @@ export default function GenericSetResultsPanel({
   return (
     <div className="set-panel">
       {!showComplement ? (
-        analysisMode === "voicings" ? (
+        !analysisMode ? (
           <>
             <div className="panel-header">
               <div className="panel-header__copy">
