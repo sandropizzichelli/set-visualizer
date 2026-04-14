@@ -82,7 +82,6 @@ export default function GenericSetResultsPanel({
   analysisMode,
   fretboardViewMode,
   filteredVoicings,
-  filteredVoicingOccurrenceCount,
   noteName,
   selectedForte,
   activeSelectedVoicingIndex,
@@ -108,7 +107,6 @@ export default function GenericSetResultsPanel({
   onAnalysisShowAllVoicingsChange,
   analysisFilteredVoicings,
   analysisPrimaryFormVoicings,
-  analysisVoicingOccurrenceCount,
   activeSelectedAnalysisVoicingIndex,
   onSelectAnalysisVoicing,
   analysisDegreeMap,
@@ -136,17 +134,13 @@ export default function GenericSetResultsPanel({
             <div className="panel-header">
               <div className="panel-header__copy">
                 <div className="eyebrow">Catalogo delle forme</div>
-                <h2>Forme uniche</h2>
+                <h2>Forme trovate</h2>
               </div>
               <ClassBadge>{filteredVoicings.length}</ClassBadge>
             </div>
 
             <p className="helper-text">
-              {filteredVoicings.length} forme uniche e {filteredVoicingOccurrenceCount}{" "}
-              occorrenze complessive per il {noteName} selezionato.
-            </p>
-            <p className="helper-text helper-text--small">
-              Le posizioni duplicate sul manico vengono raggruppate nella stessa forma.
+              {filteredVoicings.length} forme trovate per il {noteName} selezionato.
             </p>
 
             {browseMode === "iv" && activeSet && (
@@ -252,7 +246,7 @@ export default function GenericSetResultsPanel({
                       value={`[${selectedAnalysisClass.primeForm.join(",")}]`}
                     />
                     <DetailChip
-                      label="Occorrenze"
+                      label="Istanze"
                       value={String(selectedAnalysisClass.concreteCount)}
                     />
                   </div>
@@ -392,7 +386,7 @@ export default function GenericSetResultsPanel({
                               onAnalysisShowAllVoicingsChange(event.target.checked)
                             }
                           />
-                          Mostra tutte le forme uniche di questa occorrenza sul manico
+                          Mostra tutte le forme di questa occorrenza sul manico
                         </label>
                       </div>
 
@@ -409,12 +403,8 @@ export default function GenericSetResultsPanel({
                           </div>
 
                           <p className="helper-text helper-text--small">
-                            {analysisFilteredVoicings.length} forme uniche e{" "}
-                            {analysisVoicingOccurrenceCount} occorrenze per questa
+                            {analysisFilteredVoicings.length} forme trovate per questa
                             occorrenza concreta.
-                          </p>
-                          <p className="helper-text helper-text--small">
-                            Anche qui le posizioni strutturalmente identiche vengono raggruppate.
                           </p>
 
                           <div className="results-scroll results-scroll--compact">

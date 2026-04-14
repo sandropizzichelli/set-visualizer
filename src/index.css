@@ -739,12 +739,6 @@ code,
   line-height: 1.15;
 }
 
-.voicing-card__location {
-  margin-top: 9px;
-  color: var(--muted-strong);
-  font-size: 0.9rem;
-}
-
 .voicing-card__meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

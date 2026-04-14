@@ -455,7 +455,7 @@ export default function GenericSetControlsPanel({
                         checked={showAll}
                         onChange={(event) => onShowAllChange(event.target.checked)}
                       />
-                      Mostra tutte le forme uniche insieme sul manico
+                      Mostra tutte le forme sul manico
                     </label>
 
                     {fretboardViewMode === "prime" && (

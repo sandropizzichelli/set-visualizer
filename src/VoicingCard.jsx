@@ -31,9 +31,6 @@ export default function VoicingCard({
         : PC_TO_NAME[position.pc]
   );
 
-  const label = voicing.positions
-    .map((position) => `${STRINGS[position.stringIndex].name}:${position.fret}`)
-    .join(" · ");
   const occurrenceRangeLabel =
     voicing.occurrenceRange && voicing.occurrenceRange.from !== voicing.occurrenceRange.to
       ? `${voicing.occurrenceRange.from}-${voicing.occurrenceRange.to}`
@@ -52,9 +49,6 @@ export default function VoicingCard({
         </div>
         <span className="class-badge">{voicing.span} tasti</span>
       </div>
-
-      <div className="voicing-card__location">{label}</div>
-
       <div className="voicing-card__meta">
         <MetaChip
           label="Gruppo corde"
@@ -69,8 +63,8 @@ export default function VoicingCard({
           value={`${getBassDegree(voicing, degreeMap)} in basso`}
         />
         <MetaChip
-          label="Occorrenze"
-          value={`${voicing.occurrenceCount || 1} posizioni`}
+          label="Posizioni"
+          value={`${voicing.occurrenceCount || 1}`}
         />
         <MetaChip
           label="Area"

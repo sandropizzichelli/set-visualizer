@@ -447,8 +447,6 @@ export default function GenericSetPage({
     [filteredVoicingOccurrences]
   );
 
-  const filteredVoicingOccurrenceCount = filteredVoicingOccurrences.length;
-
   const primaryFormVoicing = useMemo(
     () => buildPrimaryFormVoicing(activeSet?.primeForm || []),
     [activeSet]
@@ -666,8 +664,6 @@ export default function GenericSetPage({
     () => groupVoicingsByStructure(analysisFilteredVoicingOccurrences),
     [analysisFilteredVoicingOccurrences]
   );
-
-  const analysisVoicingOccurrenceCount = analysisFilteredVoicingOccurrences.length;
 
   const analysisPrimaryFormVoicing = useMemo(
     () => buildPrimaryFormVoicing(selectedAnalysisClass?.primeForm || []),
@@ -1181,7 +1177,6 @@ export default function GenericSetPage({
             analysisMode={analysisMode}
             fretboardViewMode={fretboardViewMode}
             filteredVoicings={filteredVoicings}
-            filteredVoicingOccurrenceCount={filteredVoicingOccurrenceCount}
             noteName={noteName}
             selectedForte={activeSelectedForte}
             activeSelectedVoicingIndex={activeSelectedVoicingIndex}
@@ -1207,7 +1202,6 @@ export default function GenericSetPage({
             onAnalysisShowAllVoicingsChange={setAnalysisShowAllVoicings}
             analysisFilteredVoicings={analysisFilteredVoicings}
             analysisPrimaryFormVoicings={analysisPrimaryFormVoicings}
-            analysisVoicingOccurrenceCount={analysisVoicingOccurrenceCount}
             activeSelectedAnalysisVoicingIndex={activeSelectedAnalysisVoicingIndex}
             onSelectAnalysisVoicing={handleSelectAnalysisVoicing}
             analysisDegreeMap={analysisDegreeMap}

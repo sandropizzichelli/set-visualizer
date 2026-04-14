@@ -248,8 +248,8 @@ export default function GenericSetFretboardPanel({
           <div className="panel-stack panel-stack--spacious">
             <p className="helper-text">
               {showingPrimaryForm
-                ? "Il manico mostra la prime form come diteggiatura compatta reale: ogni nota viene collocata nella posizione piu vicina sul manico, anche cambiando corda quando questo rende la forma piu raccolta. Se attivi la spunta, vedi tutte le forme uniche risultanti."
-                : `Le caselle attenuate appartengono al ${noteName} trasformato. Le caselle evidenziate mostrano la forma selezionata, oppure tutte le forme uniche se l'opzione e attiva.`}
+                ? "Il manico mostra la prime form come diteggiatura compatta reale: ogni nota viene collocata nella posizione piu vicina sul manico, anche cambiando corda quando questo rende la forma piu raccolta. Se attivi la spunta, vedi tutte le forme risultanti."
+                : `Le caselle attenuate appartengono al ${noteName} trasformato. Le caselle evidenziate mostrano la forma selezionata, oppure tutte le forme se l'opzione e attiva.`}
             </p>
 
             {activeSet && (
@@ -328,7 +328,7 @@ export default function GenericSetFretboardPanel({
           <div className="panel-stack panel-stack--spacious">
             <p className="helper-text">
               {showingPrimaryForm
-                ? "Seleziona una classe a destra. Il manico mostra la prime form come diteggiatura compatta reale, oppure tutte le sue forme uniche se attivi la spunta."
+                ? "Seleziona una classe a destra. Il manico mostra la prime form come diteggiatura compatta reale, oppure tutte le sue forme se attivi la spunta."
                 : "Seleziona una classe a destra. Il manico mostra l&apos;occorrenza concreta scelta e, quando possibile, i suoi voicing o rivolti."}
             </p>
 
@@ -385,12 +385,12 @@ export default function GenericSetFretboardPanel({
             <FretboardStage
               title="Vista sul manico"
               badge={
-                showingPrimaryForm
-                  ? analysisShowAllVoicings
-                    ? "Prime form sovrapposte"
-                    : "Prime form"
+                  showingPrimaryForm
+                    ? analysisShowAllVoicings
+                      ? "Prime form sovrapposte"
+                      : "Prime form"
                   : analysisShowAllVoicings
-                    ? "Occorrenze sovrapposte"
+                    ? "Posizioni sovrapposte"
                     : "Occorrenza selezionata"
               }
             >
