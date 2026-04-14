@@ -271,6 +271,13 @@ export function filterByBassDegree(voicings, bassFilter, degreeMap) {
 }
 
 export function compareVoicingsForDisplay(a, b) {
+  const compactnessA = a.compactnessScore ?? Number.POSITIVE_INFINITY;
+  const compactnessB = b.compactnessScore ?? Number.POSITIVE_INFINITY;
+
+  if (compactnessA !== compactnessB) {
+    return compactnessA - compactnessB;
+  }
+
   if (a.lowestFret !== b.lowestFret) {
     return a.lowestFret - b.lowestFret;
   }
@@ -356,57 +363,140 @@ export function findHexachordVoicings(targetPcs, maxSpan = DEFAULT_MAX_SPAN) {
   return findNNoteVoicings(targetPcs, maxSpan, ALL_6_STRING_GROUPS, 6);
 }
 
-export function buildPrimaryFormVoicings(orderedPcs) {
-  if (!orderedPcs?.length) return [];
-
-  const maxInterval = Math.max(...orderedPcs);
-  const candidates = [];
+function getPitchClassPositions(targetPc) {
+  const results = [];
 
   STRINGS.forEach((stringItem, stringIndex) => {
     for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
-      if (pcAt(stringIndex, fret) !== 0) continue;
-      if (fret + maxInterval > FRET_COUNT) continue;
+      if (pcAt(stringIndex, fret) !== targetPc) continue;
 
-      candidates.push({
+      results.push({
         stringIndex,
-        startFret: fret,
-        centerDistance: Math.abs(stringIndex - (STRINGS.length - 1) / 2),
+        fret,
+        pc: targetPc,
       });
     }
   });
 
-  if (!candidates.length) return [];
+  return results;
+}
 
-  candidates.sort((first, second) => {
-    if (first.startFret !== second.startFret) {
-      return first.startFret - second.startFret;
+function getPrimaryFormStepCost(previous, current) {
+  const fretDistance = Math.abs(current.fret - previous.fret);
+  const stringDistance = Math.abs(current.stringIndex - previous.stringIndex);
+  const skipPenalty = stringDistance > 1 ? (stringDistance - 1) * 9 : 0;
+
+  return fretDistance * 11 + stringDistance * 8 + skipPenalty;
+}
+
+function getPrimaryFormCompactness(positions) {
+  const frets = positions.map((position) => position.fret);
+  const positiveFrets = frets.filter((fret) => fret > 0);
+  const minReferenceFret = positiveFrets.length ? Math.min(...positiveFrets) : 0;
+  const highestFret = Math.max(...frets);
+  const span = highestFret - minReferenceFret;
+  const lowestFret = Math.min(...frets);
+  const stringIndexes = positions.map((position) => position.stringIndex);
+  const stringSpan = Math.max(...stringIndexes) - Math.min(...stringIndexes);
+
+  let totalFretTravel = 0;
+  let totalStringTravel = 0;
+  let maxFretJump = 0;
+  let stringSkipPenalty = 0;
+  let hasSkip = false;
+
+  for (let index = 1; index < positions.length; index += 1) {
+    const previous = positions[index - 1];
+    const current = positions[index];
+    const fretDistance = Math.abs(current.fret - previous.fret);
+    const stringDistance = Math.abs(current.stringIndex - previous.stringIndex);
+
+    totalFretTravel += fretDistance;
+    totalStringTravel += stringDistance;
+    maxFretJump = Math.max(maxFretJump, fretDistance);
+
+    if (stringDistance > 1) {
+      hasSkip = true;
+      stringSkipPenalty += (stringDistance - 1) * 8;
     }
+  }
 
-    if (first.centerDistance !== second.centerDistance) {
-      return first.centerDistance - second.centerDistance;
+  const compactnessScore =
+    span * 100 +
+    stringSpan * 55 +
+    maxFretJump * 24 +
+    totalFretTravel * 12 +
+    totalStringTravel * 7 +
+    stringSkipPenalty +
+    highestFret;
+
+  return {
+    span,
+    lowestFret,
+    hasSkip,
+    compactnessScore,
+  };
+}
+
+export function buildPrimaryFormVoicings(orderedPcs) {
+  if (!orderedPcs?.length) return [];
+
+  const positionMap = new Map();
+  const results = [];
+
+  orderedPcs.forEach((pc) => {
+    if (!positionMap.has(pc)) {
+      positionMap.set(pc, getPitchClassPositions(pc));
     }
-
-    return second.stringIndex - first.stringIndex;
   });
 
-  return candidates.map(({ stringIndex, startFret }) => {
-    const positions = orderedPcs.map((pc) => ({
-      stringIndex,
-      fret: startFret + pc,
-      pc,
-    }));
-    const frets = positions.map((position) => position.fret);
+  const startPositions = positionMap.get(orderedPcs[0]) || [];
+  if (!startPositions.length) return [];
 
-    return {
-      strings: [stringIndex],
-      positions,
-      span: Math.max(...frets) - Math.min(...frets),
-      lowestFret: Math.min(...frets),
-      hasSkip: false,
-      stringPattern: STRINGS[stringIndex].name,
-      isPrimaryForm: true,
-    };
+  const walk = (depth, positions) => {
+    if (depth === orderedPcs.length) {
+      const compactness = getPrimaryFormCompactness(positions);
+
+      results.push({
+        strings: positions.map((position) => position.stringIndex),
+        positions,
+        span: compactness.span,
+        lowestFret: compactness.lowestFret,
+        hasSkip: compactness.hasSkip,
+        stringPattern: positions
+          .map((position) => STRINGS[position.stringIndex].name)
+          .join("-"),
+        compactnessScore: compactness.compactnessScore,
+        isPrimaryForm: true,
+      });
+      return;
+    }
+
+    const previousPosition = positions[positions.length - 1];
+    const targetPositions = [...(positionMap.get(orderedPcs[depth]) || [])];
+    if (!targetPositions.length) return;
+
+    targetPositions.sort((first, second) => {
+      const scoreDifference =
+        getPrimaryFormStepCost(previousPosition, first) -
+        getPrimaryFormStepCost(previousPosition, second);
+
+      if (scoreDifference !== 0) return scoreDifference;
+
+      if (first.fret !== second.fret) return first.fret - second.fret;
+      return first.stringIndex - second.stringIndex;
+    });
+
+    targetPositions.forEach((targetPosition) => {
+      walk(depth + 1, [...positions, targetPosition]);
+    });
+  };
+
+  startPositions.forEach((startPosition) => {
+    walk(1, [startPosition]);
   });
+
+  return results.sort(compareVoicingsForDisplay);
 }
 
 export function buildPrimaryFormVoicing(orderedPcs) {

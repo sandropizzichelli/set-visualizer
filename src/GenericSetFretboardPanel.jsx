@@ -248,7 +248,7 @@ export default function GenericSetFretboardPanel({
           <div className="panel-stack panel-stack--spacious">
             <p className="helper-text">
               {showingPrimaryForm
-                ? "Il manico mostra una disposizione lineare e compatta della prime form della classe attiva: e una lettura teorica della set-class, non un voicing generato. Se attivi la spunta, vedi tutte le sue posizioni utili insieme sul manico."
+                ? "Il manico mostra la prime form come diteggiatura compatta reale: ogni nota viene collocata nella posizione piu vicina sul manico, anche cambiando corda quando questo rende la forma piu raccolta. Se attivi la spunta, vedi tutte le forme uniche risultanti."
                 : `Le caselle attenuate appartengono al ${noteName} trasformato. Le caselle evidenziate mostrano la forma selezionata, oppure tutte le forme uniche se l'opzione e attiva.`}
             </p>
 
@@ -320,6 +320,7 @@ export default function GenericSetFretboardPanel({
                 intervalMap={showingPrimaryForm ? primaryFormIntervalMap : activeSet?.intervalMap}
                 selectedIntervalClasses={selectedIntervalClasses}
                 showTargetMap={!showingPrimaryForm}
+                expandOccurrencesInShowAll={showingPrimaryForm}
               />
             </FretboardStage>
           </div>
@@ -327,7 +328,7 @@ export default function GenericSetFretboardPanel({
           <div className="panel-stack panel-stack--spacious">
             <p className="helper-text">
               {showingPrimaryForm
-                ? "Seleziona una classe a destra. Il manico mostra una disposizione lineare e compatta della sua prime form, oppure tutte le sue posizioni se attivi la spunta."
+                ? "Seleziona una classe a destra. Il manico mostra la prime form come diteggiatura compatta reale, oppure tutte le sue forme uniche se attivi la spunta."
                 : "Seleziona una classe a destra. Il manico mostra l&apos;occorrenza concreta scelta e, quando possibile, i suoi voicing o rivolti."}
             </p>
 
@@ -441,6 +442,7 @@ export default function GenericSetFretboardPanel({
                     : selectedOccurrenceSummary.missingPcs
                 }
                 pcRoleMap={showingPrimaryForm ? null : analysisPcRoleMap}
+                expandOccurrencesInShowAll={showingPrimaryForm}
               />
             </FretboardStage>
           </div>

@@ -40,6 +40,7 @@ export default function Fretboard({
   showTargetMap = true,
   extraTargetPcs = [],
   pcRoleMap = null,
+  expandOccurrencesInShowAll = false,
 }) {
   const selectedMap = new Map();
   const isIntervalMode = displayMode === "intervals" && intervalMap;
@@ -47,19 +48,26 @@ export default function Fretboard({
 
   if (showAll && allVoicings) {
     allVoicings.forEach((currentVoicing) => {
-      currentVoicing.positions.forEach((position) => {
-        if (!targetPitchClassSet.has(position.pc)) return;
+      const sourceVoicings =
+        expandOccurrencesInShowAll && currentVoicing.occurrences?.length
+          ? currentVoicing.occurrences
+          : [currentVoicing];
 
-        const key = `${position.stringIndex}-${position.fret}`;
-        if (!selectedMap.has(key)) {
-          selectedMap.set(key, {
-            stringIndex: position.stringIndex,
-            fret: position.fret,
-            pc: position.pc,
-            degree: degreeMap?.get(position.pc) ?? null,
-            interval: intervalMap?.get(position.pc) ?? null,
-          });
-        }
+      sourceVoicings.forEach((sourceVoicing) => {
+        sourceVoicing.positions.forEach((position) => {
+          if (!targetPitchClassSet.has(position.pc)) return;
+
+          const key = `${position.stringIndex}-${position.fret}`;
+          if (!selectedMap.has(key)) {
+            selectedMap.set(key, {
+              stringIndex: position.stringIndex,
+              fret: position.fret,
+              pc: position.pc,
+              degree: degreeMap?.get(position.pc) ?? null,
+              interval: intervalMap?.get(position.pc) ?? null,
+            });
+          }
+        });
       });
     });
   } else if (voicing) {
