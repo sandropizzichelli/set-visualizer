@@ -87,7 +87,7 @@ export default function GenericSetControlsPanel({
   displayMode,
   onDisplayModeChange,
   degreeButtonLabel,
-  noteCount,
+  bassOptions,
   bassFilter,
   onBassFilterChange,
   transformMode,
@@ -443,7 +443,7 @@ export default function GenericSetControlsPanel({
 
                     <div className="control-card">
                       <BassButtons
-                        noteCount={noteCount}
+                        options={bassOptions}
                         value={bassFilter}
                         onChange={onBassFilterChange}
                       />

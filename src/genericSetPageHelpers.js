@@ -165,16 +165,26 @@ export function getDegreesForPcs(pcs, degreeMap) {
   )].sort((first, second) => first - second);
 }
 
-function isCircularSegment(degrees, totalCount) {
-  const uniqueDegrees = [...new Set(degrees)].sort((first, second) => first - second);
+function getOrderIndicesForPcs(pcs, orderMap) {
+  if (!orderMap) return [];
 
-  if (!uniqueDegrees.length) return false;
-  if (uniqueDegrees.length === 1 || uniqueDegrees.length === totalCount) return true;
+  return [...new Set(
+    normalizePcs(pcs)
+      .map((pc) => orderMap.get(pc))
+      .filter((index) => index !== undefined && index !== null)
+  )].sort((first, second) => first - second);
+}
 
-  return uniqueDegrees.some((startDegree) =>
-    uniqueDegrees.every((_, offset) => {
-      const expected = ((startDegree - 1 + offset) % totalCount) + 1;
-      return uniqueDegrees.includes(expected);
+function isCircularSegment(orderIndices, totalCount) {
+  const uniqueOrderIndices = [...new Set(orderIndices)].sort((first, second) => first - second);
+
+  if (!uniqueOrderIndices.length) return false;
+  if (uniqueOrderIndices.length === 1 || uniqueOrderIndices.length === totalCount) return true;
+
+  return uniqueOrderIndices.some((startIndex) =>
+    uniqueOrderIndices.every((_, offset) => {
+      const expected = (startIndex + offset) % totalCount;
+      return uniqueOrderIndices.includes(expected);
     })
   );
 }
@@ -196,6 +206,7 @@ export function buildOccurrenceSummary(
   const addedPcs = memberPcs.filter((pc) => !motherPitchClassSet.has(pc));
   const retainedDegrees = getDegreesForPcs(retainedPcs, activeSet.degreeMap);
   const missingDegrees = getDegreesForPcs(missingPcs, activeSet.degreeMap);
+  const retainedOrderIndices = getOrderIndicesForPcs(retainedPcs, activeSet.orderMap);
 
   return {
     classTransform: describeOccurrenceTransform(
@@ -209,7 +220,7 @@ export function buildOccurrenceSummary(
     addedPcs,
     typeLabel:
       analysisMode === "subsets"
-        ? isCircularSegment(retainedDegrees, activeSet.pcs.length)
+        ? isCircularSegment(retainedOrderIndices, activeSet.pcs.length)
           ? "segmento contiguo"
           : "selezione discontinua"
         : addedPcs.length === 1

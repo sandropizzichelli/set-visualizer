@@ -74,6 +74,7 @@ export default function GenericSetResultsPanel({
   canRenderAnalysisVoicings,
   selectedAnalysisMember,
   analysisBassFilter,
+  analysisBassOptions,
   onAnalysisBassFilterChange,
   analysisShowAllVoicings,
   onAnalysisShowAllVoicingsChange,
@@ -293,7 +294,7 @@ export default function GenericSetResultsPanel({
                       {!showingPrimaryForm && (
                         <div className="control-card__stack">
                           <BassButtons
-                            noteCount={selectedAnalysisMember.length}
+                            options={analysisBassOptions}
                             value={analysisBassFilter}
                             onChange={onAnalysisBassFilterChange}
                           />

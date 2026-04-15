@@ -16,7 +16,7 @@ export function SectionTitle({ children }) {
   return <div className="section-title">{children}</div>;
 }
 
-export function BassButtons({ noteCount, value, onChange }) {
+export function BassButtons({ options = [], value, onChange }) {
   return (
     <div className="control-card__stack">
       <SectionTitle>Rivolti / basso</SectionTitle>
@@ -24,13 +24,13 @@ export function BassButtons({ noteCount, value, onChange }) {
         <PillButton active={value === "all"} onClick={() => onChange("all")}>
           Tutti
         </PillButton>
-        {Array.from({ length: noteCount }, (_, i) => (
+        {options.map((option) => (
           <PillButton
-            key={i + 1}
-            active={value === i + 1}
-            onClick={() => onChange(i + 1)}
+            key={option}
+            active={value === option}
+            onClick={() => onChange(option)}
           >
-            {i + 1} in basso
+            {option} in basso
           </PillButton>
         ))}
       </div>

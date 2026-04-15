@@ -196,8 +196,8 @@ export function transformOrderedPrimeForm(pf, mode, n) {
 export function makeDegreeMapFromPrimeForm(primeFormArray, mode, amount) {
   const transformed = transformOrderedPrimeForm(primeFormArray, mode, amount);
   const map = new Map();
-  transformed.forEach((pc, idx) => {
-    map.set(pc, idx + 1);
+  transformed.forEach((pc) => {
+    map.set(pc, pc);
   });
   return map;
 }

@@ -52,7 +52,7 @@ export default function TricordPage() {
       findVoicingFn={findVoicings}
       noteName="tricordo"
       complementName="Complementare"
-      degreeButtonLabel="Gradi 1-2-3"
+      degreeButtonLabel="Gradi"
       noteCount={3}
     />
   );

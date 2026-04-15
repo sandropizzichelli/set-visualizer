@@ -40,7 +40,7 @@ function TetrachordPage() {
       findVoicingFn={findTetrachordVoicings}
       noteName="tetracordo"
       complementName="Complementare"
-      degreeButtonLabel="Gradi 1-2-3-4"
+      degreeButtonLabel="Gradi"
       noteCount={4}
     />
   );
@@ -57,7 +57,7 @@ function PentachordPage() {
       findVoicingFn={findPentachordVoicings}
       noteName="pentacordo"
       complementName="Complementare"
-      degreeButtonLabel="Gradi 1-2-3-4-5"
+      degreeButtonLabel="Gradi"
       noteCount={5}
     />
   );
@@ -74,7 +74,7 @@ function HexachordPage() {
       findVoicingFn={findHexachordVoicings}
       noteName="esacordo"
       complementName="Complementare"
-      degreeButtonLabel="Gradi 1-2-3-4-5-6"
+      degreeButtonLabel="Gradi"
       noteCount={6}
     />
   );

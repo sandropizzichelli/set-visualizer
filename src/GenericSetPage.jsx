@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { DEFAULT_MAX_SPAN, PC_TO_NAME } from "./setData";
+import { DEFAULT_MAX_SPAN } from "./setData";
 import {
   parsePfString,
   transformPcs,
@@ -31,7 +31,6 @@ import {
   formatDegreeList,
   formatIntervalVector,
   formatPitchClassList,
-  formatSemitoneLabel,
   getClassKey,
 } from "./genericSetPageHelpers";
 import {
@@ -60,12 +59,12 @@ function getAvailableVoicingLayoutFilters(noteCount) {
   return noteCount >= 6 ? ["all", "close"] : VOICING_LAYOUT_FILTERS;
 }
 
-function readBassFilter(params, name, noteCount) {
+function readBassFilter(params, name) {
   const value = params.get(name);
   if (!value || value === "all") return "all";
 
   const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 1 || parsed > noteCount) {
+  if (Number.isNaN(parsed) || parsed < 0 || parsed > 11) {
     return "all";
   }
 
@@ -158,7 +157,7 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
       DISPLAY_MODES,
       DEFAULT_DISPLAY_MODE
     ),
-    bassFilter: readBassFilter(params, "bass", noteCount),
+    bassFilter: readBassFilter(params, "bass"),
     transformMode: readEnumParam(params, "transform", TRANSFORM_MODES, "base"),
     transformAmount: readIntegerParam(params, "amount", 0, {
       min: 0,
@@ -172,7 +171,7 @@ function buildInitialUrlState(keys, dataMap, noteCount) {
       min: 0,
     }),
     analysisShowAllVoicings: readBooleanParam(params, "aShowAll", false),
-    analysisBassFilter: readBassFilter(params, "abass", noteCount),
+    analysisBassFilter: readBassFilter(params, "abass"),
     selectedIntervalClasses: readIntervalClassFilter(params, "ic"),
   };
 }
@@ -185,22 +184,10 @@ function getVoicingFinderByCardinality(cardinality) {
   return null;
 }
 
-function getDisplayModeLabel(displayMode, degreeButtonLabel) {
+function getDisplayModeLabel(displayMode) {
   if (displayMode === "notes") return "Note";
-  if (displayMode === "degrees") return degreeButtonLabel;
+  if (displayMode === "degrees") return "Gradi";
   return "Intervalli";
-}
-
-function getCatalogNoteLabel(pc, displayMode, degreeMap, intervalMap) {
-  if (displayMode === "degrees") {
-    return String(degreeMap?.get(pc) ?? "");
-  }
-
-  if (displayMode === "intervals") {
-    return formatSemitoneLabel(intervalMap?.get(pc) ?? 0);
-  }
-
-  return PC_TO_NAME[pc];
 }
 
 export default function GenericSetPage({
@@ -403,6 +390,10 @@ export default function GenericSetPage({
     const intervalLegend = buildIntervalLegend(transformedPrimeForm);
     const intervalClassPitchClassMap =
       buildIntervalClassPitchClassMap(transformedPrimeForm);
+    const orderMap = new Map();
+    transformedPrimeForm.forEach((pc, index) => {
+      orderMap.set(pc, index);
+    });
 
     return {
       basePcs,
@@ -410,6 +401,7 @@ export default function GenericSetPage({
       primeForm: basePcs,
       transformedPrimeForm,
       degreeMap,
+      orderMap,
       intervalMap,
       intervalLegend,
       intervalClassBreakdown: buildIntervalClassBreakdown(setDataRaw.iv),
@@ -465,6 +457,16 @@ export default function GenericSetPage({
     return availableGroupPatterns.includes(groupFilter) ? groupFilter : "all";
   }, [groupFilter, availableGroupPatterns]);
 
+  const bassOptions = useMemo(
+    () => [...new Set(activeSet?.transformedPrimeForm || [])],
+    [activeSet]
+  );
+
+  const activeBassFilter = useMemo(() => {
+    if (bassFilter === "all") return "all";
+    return bassOptions.includes(bassFilter) ? bassFilter : "all";
+  }, [bassFilter, bassOptions]);
+
   const filteredVoicingOccurrences = useMemo(() => {
     let list = [...layoutFilteredVoicingOccurrences];
 
@@ -472,10 +474,15 @@ export default function GenericSetPage({
       list = list.filter((voicing) => voicing.stringPattern === activeGroupFilter);
     }
 
-    list = filterByBassDegree(list, bassFilter, activeSet?.degreeMap);
+    list = filterByBassDegree(list, activeBassFilter, activeSet?.degreeMap);
 
     return list;
-  }, [layoutFilteredVoicingOccurrences, activeGroupFilter, bassFilter, activeSet]);
+  }, [
+    layoutFilteredVoicingOccurrences,
+    activeGroupFilter,
+    activeBassFilter,
+    activeSet,
+  ]);
 
   const filteredVoicings = useMemo(
     () => groupVoicingsByStructure(filteredVoicingOccurrences),
@@ -496,8 +503,8 @@ export default function GenericSetPage({
     if (!activeSet?.primeForm?.length) return null;
 
     const map = new Map();
-    activeSet.primeForm.forEach((pc, index) => {
-      map.set(pc, index + 1);
+    activeSet.primeForm.forEach((pc) => {
+      map.set(pc, pc);
     });
     return map;
   }, [activeSet]);
@@ -584,12 +591,22 @@ export default function GenericSetPage({
     if (!selectedAnalysisMember) return null;
 
     const map = new Map();
-    selectedAnalysisMember.forEach((pc, index) => {
-      map.set(pc, index + 1);
+    selectedAnalysisMember.forEach((pc) => {
+      map.set(pc, pc);
     });
 
     return map;
   }, [selectedAnalysisMember]);
+
+  const analysisBassOptions = useMemo(
+    () => [...new Set(selectedAnalysisMember || [])],
+    [selectedAnalysisMember]
+  );
+
+  const activeAnalysisBassFilter = useMemo(() => {
+    if (analysisBassFilter === "all") return "all";
+    return analysisBassOptions.includes(analysisBassFilter) ? analysisBassFilter : "all";
+  }, [analysisBassFilter, analysisBassOptions]);
 
   const analysisIntervalMap = useMemo(
     () => buildIntervalMapFromOrderedPcs(selectedAnalysisMember || []),
@@ -685,13 +702,13 @@ export default function GenericSetPage({
       list = list.filter((voicing) => voicing.positions.every((position) => position.fret > 0));
     }
 
-    list = filterByBassDegree(list, analysisBassFilter, analysisDegreeMap);
+    list = filterByBassDegree(list, activeAnalysisBassFilter, analysisDegreeMap);
 
     return list;
   }, [
     analysisRawVoicings,
     excludeOpenStrings,
-    analysisBassFilter,
+    activeAnalysisBassFilter,
     analysisDegreeMap,
   ]);
 
@@ -721,8 +738,8 @@ export default function GenericSetPage({
     if (!selectedAnalysisClass?.primeForm?.length) return null;
 
     const map = new Map();
-    selectedAnalysisClass.primeForm.forEach((pc, index) => {
-      map.set(pc, index + 1);
+    selectedAnalysisClass.primeForm.forEach((pc) => {
+      map.set(pc, pc);
     });
     return map;
   }, [selectedAnalysisClass]);
@@ -869,12 +886,14 @@ export default function GenericSetPage({
 
   const handleTransformModeChange = (mode) => {
     setTransformMode(mode);
+    setBassFilter("all");
     resetPrimaryVoicingSelection();
     resetAnalysisClassSelection();
   };
 
   const handleTransformAmountChange = (amount) => {
     setTransformAmount(amount);
+    setBassFilter("all");
     resetPrimaryVoicingSelection();
     resetAnalysisClassSelection();
   };
@@ -905,6 +924,7 @@ export default function GenericSetPage({
     setSelectedAnalysisClassKey(null);
     setSelectedAnalysisMemberIndex(0);
     setSelectedAnalysisVoicingIndex(0);
+    setBassFilter("all");
     setAnalysisBassFilter("all");
   };
 
@@ -1199,15 +1219,11 @@ export default function GenericSetPage({
         items: [
           { label: "Classe", value: activeSet.forteName },
           { label: "Prime form", value: `[${activeSet.primeForm.join(",")}]` },
-          {
-            label: "Ordine attivo",
-            value: `[${activeSet.transformedPrimeForm.join(",")}]`,
-          },
           { label: "IV", value: formatIntervalVector(activeSet.iv) },
         ],
         note: [
           fretboardViewMode === "prime" ? "Forma primaria" : "Voicing",
-          getDisplayModeLabel(displayMode, degreeButtonLabel),
+          getDisplayModeLabel(displayMode),
           browseMode === "iv"
             ? `${intervalVectorFamilyClasses.length} classi nella famiglia IV`
             : null,
@@ -1257,7 +1273,6 @@ export default function GenericSetPage({
     analysisOccurrenceSummary,
     fretboardViewMode,
     displayMode,
-    degreeButtonLabel,
     browseMode,
     intervalVectorFamilyClasses,
   ]);
@@ -1272,7 +1287,7 @@ export default function GenericSetPage({
       }
     : !analysisMode
       ? {
-          eyebrow: "Catalogo delle forme",
+          eyebrow: null,
           title: "Forme trovate",
           count: filteredVoicings.length,
           items: filteredVoicings.map((voicing, index) => ({
@@ -1280,16 +1295,11 @@ export default function GenericSetPage({
             title: `Forma ${index + 1}`,
             subtitle: voicing.positions
               .map((position) =>
-                getCatalogNoteLabel(
-                  position.pc,
-                  displayMode,
-                  activeSet?.degreeMap,
-                  activeSet?.intervalMap
-                )
+                String(activeSet?.degreeMap?.get(position.pc) ?? position.pc)
               )
               .join(" • "),
-            meta: `${voicing.hasSkip ? "Spread" : "Close"} · ${voicing.span} tasti`,
-            auxiliary: `${voicing.occurrenceCount || 1} posizioni`,
+            meta: null,
+            auxiliary: null,
             active: index === activeSelectedVoicingIndex,
             onClick: () => handleSelectVoicing(index),
           })),
@@ -1358,7 +1368,11 @@ export default function GenericSetPage({
           ? activeSelectedIntervalClasses.join(",")
           : null
       );
-      setSearchParam(params, "bass", bassFilter === "all" ? null : bassFilter);
+      setSearchParam(
+        params,
+        "bass",
+        activeBassFilter === "all" ? null : activeBassFilter
+      );
 
       setSearchParam(params, "transform", transformMode === "base" ? null : transformMode);
       setSearchParam(
@@ -1386,7 +1400,7 @@ export default function GenericSetPage({
       setSearchParam(
         params,
         "abass",
-        analysisBassFilter === "all" ? null : analysisBassFilter
+        activeAnalysisBassFilter === "all" ? null : activeAnalysisBassFilter
       );
       setBooleanSearchParam(params, "aShowAll", analysisShowAllVoicings);
       setSearchParam(
@@ -1411,13 +1425,13 @@ export default function GenericSetPage({
     activeVoicingLayoutFilter,
     displayMode,
     activeSelectedIntervalClasses,
-    bassFilter,
+    activeBassFilter,
     transformMode,
     transformAmount,
     activeSelectedVoicingIndex,
     selectedAnalysisClass,
     activeSelectedAnalysisMemberIndex,
-    analysisBassFilter,
+    activeAnalysisBassFilter,
     analysisShowAllVoicings,
     activeSelectedAnalysisVoicingIndex,
   ]);
@@ -1466,8 +1480,8 @@ export default function GenericSetPage({
           displayMode={displayMode}
           onDisplayModeChange={setDisplayMode}
           degreeButtonLabel={degreeButtonLabel}
-          noteCount={noteCount}
-          bassFilter={bassFilter}
+          bassOptions={bassOptions}
+          bassFilter={activeBassFilter}
           onBassFilterChange={setBassFilter}
           transformMode={transformMode}
           transformAmount={transformAmount}
@@ -1549,7 +1563,8 @@ export default function GenericSetPage({
             onAnalysisMemberIndexChange={handleAnalysisMemberIndexChange}
             canRenderAnalysisVoicings={canRenderAnalysisVoicings}
             selectedAnalysisMember={selectedAnalysisMember}
-            analysisBassFilter={analysisBassFilter}
+            analysisBassFilter={activeAnalysisBassFilter}
+            analysisBassOptions={analysisBassOptions}
             onAnalysisBassFilterChange={handleAnalysisBassFilterChange}
             analysisShowAllVoicings={analysisShowAllVoicings}
             onAnalysisShowAllVoicingsChange={setAnalysisShowAllVoicings}
