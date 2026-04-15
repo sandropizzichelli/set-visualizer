@@ -16,6 +16,10 @@ function patchImports(source) {
     .replaceAll(
       'from "./genericSetPageState";',
       'from "./genericSetPageState.js";'
+    )
+    .replaceAll(
+      'from "./genericSetPageTransitions";',
+      'from "./genericSetPageTransitions.js";'
     );
 }
 
@@ -30,6 +34,7 @@ async function prepareTempModules() {
     "genericSetPageHelpers.js",
     "urlState.js",
     "genericSetPageState.js",
+    "genericSetPageTransitions.js",
   ];
 
   await Promise.all(
@@ -41,15 +46,23 @@ async function prepareTempModules() {
     })
   );
 
-  const [setData, setUtils, helpers, urlState, genericSetPageState] = await Promise.all([
+  const [setData, setUtils, helpers, urlState, genericSetPageState, genericSetPageTransitions] = await Promise.all([
     import(pathToFileURL(path.join(tempSrc, "setData.js")).href),
     import(pathToFileURL(path.join(tempSrc, "setUtils.js")).href),
     import(pathToFileURL(path.join(tempSrc, "genericSetPageHelpers.js")).href),
     import(pathToFileURL(path.join(tempSrc, "urlState.js")).href),
     import(pathToFileURL(path.join(tempSrc, "genericSetPageState.js")).href),
+    import(pathToFileURL(path.join(tempSrc, "genericSetPageTransitions.js")).href),
   ]);
 
-  return { setData, setUtils, helpers, urlState, genericSetPageState };
+  return {
+    setData,
+    setUtils,
+    helpers,
+    urlState,
+    genericSetPageState,
+    genericSetPageTransitions,
+  };
 }
 
 export function loadSourceModules() {

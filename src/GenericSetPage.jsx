@@ -44,6 +44,11 @@ import {
   buildUrlStateFromParams,
   getAvailableVoicingLayoutFilters,
 } from "./genericSetPageState";
+import {
+  buildForteSelectionState,
+  buildIntervalVectorSelectionState,
+  getDisplayModeAfterBrowseModeChange,
+} from "./genericSetPageTransitions";
 
 const ANALYSIS_MODES = ["subsets", "supersets"];
 const DISPLAY_MODES = ["notes", "degrees", "intervals"];
@@ -802,27 +807,28 @@ export default function GenericSetPage({
     }
   };
 
-  const resetSetPresentationDefaults = () => {
-    setFretboardViewMode(DEFAULT_FRETBOARD_VIEW_MODE);
-    setDisplayMode(DEFAULT_DISPLAY_MODE);
-    setAnalysisMode(null);
-    setSelectedIntervalClasses([]);
-    setShowComplement(false);
-    setShowAll(false);
-    setAnalysisShowAllVoicings(false);
-    setSelected(0);
-    setSelectedAnalysisClassKey(null);
-    setSelectedAnalysisMemberIndex(0);
-    setSelectedAnalysisVoicingIndex(0);
-    setBassFilter("all");
-    setAnalysisBassFilter("all");
+  const applySetPresentationPatch = (patch) => {
+    setFretboardViewMode(patch.fretboardViewMode);
+    setDisplayMode(patch.displayMode);
+    setAnalysisMode(patch.analysisMode);
+    setSelectedIntervalClasses(patch.selectedIntervalClasses);
+    setShowComplement(patch.showComplement);
+    setShowAll(patch.showAll);
+    setAnalysisShowAllVoicings(patch.analysisShowAllVoicings);
+    setSelected(patch.selected);
+    setSelectedAnalysisClassKey(patch.selectedAnalysisClassKey);
+    setSelectedAnalysisMemberIndex(patch.selectedAnalysisMemberIndex);
+    setSelectedAnalysisVoicingIndex(patch.selectedAnalysisVoicingIndex);
+    setBassFilter(patch.bassFilter);
+    setAnalysisBassFilter(patch.analysisBassFilter);
   };
 
   const handleBrowseModeChange = (mode) => {
     setBrowseMode(mode);
 
-    if (mode === "iv" && displayMode === "notes") {
-      setDisplayMode("intervals");
+    const nextDisplayMode = getDisplayModeAfterBrowseModeChange(mode, displayMode);
+    if (nextDisplayMode !== displayMode) {
+      setDisplayMode(nextDisplayMode);
     }
 
     if (mode === "iv") {
@@ -842,21 +848,25 @@ export default function GenericSetPage({
   };
 
   const handleSelectedForteChange = (forte) => {
-    resetSetPresentationDefaults();
-    setSelectedForte(forte);
-    if (dataMap[forte]?.iv) {
-      setSelectedIntervalVector(dataMap[forte].iv);
+    const nextState = buildForteSelectionState(forte, dataMap);
+    applySetPresentationPatch(nextState);
+    setSelectedForte(nextState.selectedForte);
+    if (nextState.selectedIntervalVector) {
+      setSelectedIntervalVector(nextState.selectedIntervalVector);
     }
   };
 
   const handleSelectedIntervalVectorChange = (intervalVector) => {
-    const matchingKeys = intervalVectorMap.get(intervalVector) || [];
+    const nextState = buildIntervalVectorSelectionState(
+      intervalVector,
+      intervalVectorMap
+    );
 
-    resetSetPresentationDefaults();
-    setSelectedIntervalVector(intervalVector);
+    applySetPresentationPatch(nextState);
+    setSelectedIntervalVector(nextState.selectedIntervalVector);
 
-    if (matchingKeys.length) {
-      setSelectedForte(matchingKeys[0]);
+    if (nextState.selectedForte) {
+      setSelectedForte(nextState.selectedForte);
     }
   };
 
