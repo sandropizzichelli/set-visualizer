@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { DEFAULT_MAX_SPAN } from "./setData";
+import { DEFAULT_MAX_SPAN, PC_TO_NAME } from "./setData";
 import {
   parsePfString,
   transformPcs,
@@ -31,6 +31,7 @@ import {
   formatDegreeList,
   formatIntervalVector,
   formatPitchClassList,
+  formatSemitoneLabel,
   getClassKey,
 } from "./genericSetPageHelpers";
 import {
@@ -188,6 +189,18 @@ function getDisplayModeLabel(displayMode, degreeButtonLabel) {
   if (displayMode === "notes") return "Note";
   if (displayMode === "degrees") return degreeButtonLabel;
   return "Intervalli";
+}
+
+function getCatalogNoteLabel(pc, displayMode, degreeMap, intervalMap) {
+  if (displayMode === "degrees") {
+    return String(degreeMap?.get(pc) ?? "");
+  }
+
+  if (displayMode === "intervals") {
+    return formatSemitoneLabel(intervalMap?.get(pc) ?? 0);
+  }
+
+  return PC_TO_NAME[pc];
 }
 
 export default function GenericSetPage({
@@ -1249,6 +1262,55 @@ export default function GenericSetPage({
     intervalVectorFamilyClasses,
   ]);
 
+  const heroCatalogState = showComplement
+    ? {
+        eyebrow: "Vista complementare",
+        title: "Catalogo sospeso",
+        count: null,
+        items: [],
+        emptyNote: "Il catalogo delle forme torna disponibile nella vista del set.",
+      }
+    : !analysisMode
+      ? {
+          eyebrow: "Catalogo delle forme",
+          title: "Forme trovate",
+          count: filteredVoicings.length,
+          items: filteredVoicings.map((voicing, index) => ({
+            key: `voicing-${selectedForte}-${index}`,
+            title: `Forma ${index + 1}`,
+            subtitle: voicing.positions
+              .map((position) =>
+                getCatalogNoteLabel(
+                  position.pc,
+                  displayMode,
+                  activeSet?.degreeMap,
+                  activeSet?.intervalMap
+                )
+              )
+              .join(" • "),
+            meta: `${voicing.hasSkip ? "Spread" : "Close"} · ${voicing.span} tasti`,
+            auxiliary: `${voicing.occurrenceCount || 1} posizioni`,
+            active: index === activeSelectedVoicingIndex,
+            onClick: () => handleSelectVoicing(index),
+          })),
+          emptyNote: "Nessuna forma disponibile con i filtri correnti.",
+        }
+      : {
+          eyebrow: analysisMode === "subsets" ? "Catalogo subset" : "Catalogo superset",
+          title: "Classi trovate",
+          count: analysisClasses.length,
+          items: analysisClasses.map((item) => ({
+            key: `analysis-${analysisMode}-${getClassKey(item)}`,
+            title: item.forteName || "n.d.",
+            subtitle: `PF [${item.primeForm.join(",")}]`,
+            meta: `${item.concreteCount} istanze`,
+            auxiliary: formatIntervalVector(item.iv),
+            active: getClassKey(item) === getClassKey(selectedAnalysisClass || item),
+            onClick: () => handleSelectAnalysisClass(getClassKey(item)),
+          })),
+          emptyNote: "Nessuna classe trovata per i filtri attivi.",
+        };
+
   useEffect(() => {
     replaceSearchParams((params) => {
       setSearchParam(params, "browse", browseMode === "forte" ? null : browseMode);
@@ -1368,6 +1430,7 @@ export default function GenericSetPage({
           browseMode={browseMode}
           heroFretboardState={heroFretboardState}
           heroSummaryState={heroSummaryState}
+          heroCatalogState={heroCatalogState}
           onBrowseModeChange={handleBrowseModeChange}
           sortedKeys={sortedKeys}
           dataMap={dataMap}

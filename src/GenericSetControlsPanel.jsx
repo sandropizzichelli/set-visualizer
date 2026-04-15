@@ -25,11 +25,33 @@ function ControlSection({ eyebrow, title, children, className = "" }) {
   );
 }
 
+function HeroCatalogRow({ item }) {
+  return (
+    <button
+      type="button"
+      onClick={item.onClick}
+      className={item.active ? "hero-catalog-row hero-catalog-row--active" : "hero-catalog-row"}
+    >
+      <div className="hero-catalog-row__copy">
+        <div className="hero-catalog-row__title">{item.title}</div>
+        {item.subtitle ? <div className="hero-catalog-row__subtitle">{item.subtitle}</div> : null}
+        {(item.meta || item.auxiliary) && (
+          <div className="hero-catalog-row__meta">
+            {item.meta ? <span>{item.meta}</span> : null}
+            {item.auxiliary ? <span>{item.auxiliary}</span> : null}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export default function GenericSetControlsPanel({
   keyLabel,
   browseMode,
   heroFretboardState,
   heroSummaryState,
+  heroCatalogState,
   onBrowseModeChange,
   sortedKeys,
   dataMap,
@@ -241,11 +263,44 @@ export default function GenericSetControlsPanel({
       <div className="set-hero">
         <div className="set-hero__main">
           <div className="hero-fretboard-card">
-            {heroFretboardState?.badge && (
-              <div className="hero-fretboard-card__head hero-fretboard-card__head--compact">
-                <span className="class-badge">{heroFretboardState.badge}</span>
+            {(heroFretboardState?.badge || heroSummaryState?.badge) && (
+              <div className="hero-fretboard-card__head hero-fretboard-card__head--spread">
+                {heroFretboardState?.badge ? (
+                  <span className="class-badge">{heroFretboardState.badge}</span>
+                ) : (
+                  <span />
+                )}
+                {heroSummaryState?.badge && (
+                  <span className="class-badge">{heroSummaryState.badge}</span>
+                )}
               </div>
             )}
+
+            {heroSummaryState?.items?.length ? (
+              <div className="hero-fretboard-card__summary">
+                <div className="hero-summary-grid hero-summary-grid--hero">
+                  {heroSummaryState.items.map((item) => (
+                    <div
+                      key={`${item.label}-${item.value}`}
+                      className="hero-summary-item hero-summary-item--hero"
+                    >
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
+
+                {heroSummaryState?.note && (
+                  <p className="hero-summary-note hero-summary-note--hero">
+                    {heroSummaryState.note}
+                  </p>
+                )}
+              </div>
+            ) : heroSummaryState?.note ? (
+              <p className="hero-summary-note hero-summary-note--hero">
+                {heroSummaryState.note}
+              </p>
+            ) : null}
 
             {heroFretboardState?.props ? (
               <Fretboard {...heroFretboardState.props} />
@@ -257,30 +312,29 @@ export default function GenericSetControlsPanel({
           </div>
         </div>
 
-        <aside className="hero-summary-card">
-          <div className="hero-summary-card__head hero-summary-card__head--compact">
-            {heroSummaryState?.badge && (
-              <span className="class-badge">{heroSummaryState.badge}</span>
+        <aside className="hero-summary-card hero-summary-card--catalog">
+          <div className="panel-header panel-header--compact">
+            <div className="panel-header__copy">
+              {heroCatalogState?.eyebrow ? (
+                <div className="eyebrow">{heroCatalogState.eyebrow}</div>
+              ) : null}
+              <h2>{heroCatalogState?.title || "Catalogo"}</h2>
+            </div>
+            {heroCatalogState?.count != null && (
+              <span className="class-badge">{heroCatalogState.count}</span>
             )}
           </div>
 
-          {heroSummaryState?.items?.length ? (
-            <div className="hero-summary-grid">
-              {heroSummaryState.items.map((item) => (
-                <div key={`${item.label}-${item.value}`} className="hero-summary-item">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </div>
+          {heroCatalogState?.items?.length ? (
+            <div className="hero-catalog-list">
+              {heroCatalogState.items.map((item) => (
+                <HeroCatalogRow key={item.key} item={item} />
               ))}
             </div>
           ) : (
             <p className="helper-text helper-text--small">
-              Seleziona una classe per vedere qui la sintesi essenziale del set attivo.
+              {heroCatalogState?.emptyNote || "Nessun risultato disponibile."}
             </p>
-          )}
-
-          {heroSummaryState?.note && (
-            <p className="hero-summary-note">{heroSummaryState.note}</p>
           )}
         </aside>
       </div>

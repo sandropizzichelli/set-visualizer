@@ -9,7 +9,6 @@ import {
   formatDegreeList,
   formatIntervalVector,
   formatPitchClassList,
-  getCardinalityLabel,
   getClassKey,
 } from "./genericSetPageHelpers";
 
@@ -23,25 +22,6 @@ function DetailChip({ label, value }) {
       <div className="detail-chip__label">{label}</div>
       <div className="detail-chip__value">{value}</div>
     </div>
-  );
-}
-
-function ClassResultRow({ item, active, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={active ? "class-result-row class-result-row--active" : "class-result-row"}
-    >
-      <div>
-        <div className="class-result-row__title">{item.forteName || "n.d."}</div>
-        <div className="class-result-row__meta">
-          PF [{item.primeForm.join(",")}] · {getCardinalityLabel(item.cardinality)}
-        </div>
-      </div>
-
-      <ClassBadge>x {item.concreteCount}</ClassBadge>
-    </button>
   );
 }
 
@@ -81,21 +61,13 @@ export default function GenericSetResultsPanel({
   showComplement,
   analysisMode,
   fretboardViewMode,
-  filteredVoicings,
   noteName,
-  selectedForte,
-  activeSelectedVoicingIndex,
-  onSelectVoicing,
   displayMode,
   activeSet,
   intervalVectorFamilyClasses,
   selectedIntervalVector,
   onSelectFamilyClass,
-  analysisClasses,
-  subsetTargetCardinality,
-  supersetTargetCardinality,
   selectedAnalysisClass,
-  onSelectAnalysisClass,
   analysisMembers,
   activeSelectedAnalysisMemberIndex,
   onAnalysisMemberIndexChange,
@@ -114,10 +86,6 @@ export default function GenericSetResultsPanel({
   complementName,
   complementData,
 }) {
-  const analysisLabel = analysisMode === "subsets" ? "Subset-class" : "Superset-class";
-  const analysisTargetLabel = getCardinalityLabel(
-    analysisMode === "subsets" ? subsetTargetCardinality : supersetTargetCardinality
-  ).toLowerCase();
   const showingPrimaryForm = fretboardViewMode === "prime";
   const selectedOccurrenceSummary = buildOccurrenceSummary(
     analysisMode,
@@ -126,28 +94,23 @@ export default function GenericSetResultsPanel({
     selectedAnalysisMember
   );
 
+  if (!showComplement && !analysisMode && browseMode !== "iv") {
+    return null;
+  }
+
   return (
     <div className="set-panel">
       {!showComplement ? (
         !analysisMode ? (
           <>
-            <div className="panel-header">
-              <div className="panel-header__copy">
-                <div className="eyebrow">Catalogo delle forme</div>
-                <h2>Forme trovate</h2>
-              </div>
-              <ClassBadge>{filteredVoicings.length}</ClassBadge>
-            </div>
-
-            <p className="helper-text">
-              {filteredVoicings.length} forme trovate per il {noteName} selezionato.
-            </p>
-
             {browseMode === "iv" && activeSet && (
               <div className="analysis-card">
                 <div className="panel-stack">
                   <div className="picker-head">
-                    <div className="section-title">Famiglia interval vector</div>
+                    <div>
+                      <div className="eyebrow">Relazioni intervallari</div>
+                      <h2>Famiglia interval vector</h2>
+                    </div>
                     <ClassBadge>{intervalVectorFamilyClasses.length}</ClassBadge>
                   </div>
 
@@ -175,56 +138,16 @@ export default function GenericSetResultsPanel({
                 </div>
               </div>
             )}
-
-            <div className="results-scroll">
-              {filteredVoicings.map((voicing, index) => (
-                <VoicingCard
-                  key={`${selectedForte}-${index}-${voicing.positions
-                    .map((position) => `${position.stringIndex}-${position.fret}`)
-                    .join("-")}`}
-                  voicing={voicing}
-                  index={index}
-                  selected={index === activeSelectedVoicingIndex}
-                  onSelect={() => onSelectVoicing(index)}
-                  displayMode={displayMode}
-                  showPrimeForm={true}
-                  showForte={true}
-                  degreeMap={activeSet?.degreeMap}
-                  intervalMap={activeSet?.intervalMap}
-                />
-              ))}
-
-              {filteredVoicings.length === 0 && (
-                <p className="empty-note">Nessuna forma disponibile con i filtri correnti.</p>
-              )}
-            </div>
           </>
         ) : (
           <>
             <div className="panel-header">
               <div className="panel-header__copy">
                 <div className="eyebrow">Analisi comparata</div>
-                <h2>{analysisLabel}</h2>
+                <h2>Dettaglio classe</h2>
               </div>
-              <ClassBadge>{analysisClasses.length}</ClassBadge>
-            </div>
-
-            <p className="helper-text">
-              {analysisClasses.length} classi trovate in {analysisTargetLabel}.
-            </p>
-
-            <div className="results-scroll results-scroll--short">
-              {analysisClasses.map((item) => (
-                <ClassResultRow
-                  key={`${analysisMode}-${getClassKey(item)}`}
-                  item={item}
-                  active={getClassKey(item) === getClassKey(selectedAnalysisClass || item)}
-                  onClick={() => onSelectAnalysisClass(getClassKey(item))}
-                />
-              ))}
-
-              {analysisClasses.length === 0 && (
-                <p className="empty-note">Nessuna classe trovata per i filtri attivi.</p>
+              {selectedAnalysisClass && (
+                <ClassBadge>{selectedAnalysisClass.forteName || "n.d."}</ClassBadge>
               )}
             </div>
 
