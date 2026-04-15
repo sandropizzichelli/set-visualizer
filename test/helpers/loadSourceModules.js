@@ -11,7 +11,12 @@ let modulesPromise;
 function patchImports(source) {
   return source
     .replaceAll('from "./setData";', 'from "./setData.js";')
-    .replaceAll('from "./setUtils";', 'from "./setUtils.js";');
+    .replaceAll('from "./setUtils";', 'from "./setUtils.js";')
+    .replaceAll('from "./urlState";', 'from "./urlState.js";')
+    .replaceAll(
+      'from "./genericSetPageState";',
+      'from "./genericSetPageState.js";'
+    );
 }
 
 async function prepareTempModules() {
@@ -19,7 +24,13 @@ async function prepareTempModules() {
   const tempSrc = path.join(tempRoot, "src");
   await mkdir(tempSrc, { recursive: true });
 
-  const files = ["setData.js", "setUtils.js", "genericSetPageHelpers.js"];
+  const files = [
+    "setData.js",
+    "setUtils.js",
+    "genericSetPageHelpers.js",
+    "urlState.js",
+    "genericSetPageState.js",
+  ];
 
   await Promise.all(
     files.map(async (fileName) => {
@@ -30,13 +41,15 @@ async function prepareTempModules() {
     })
   );
 
-  const [setData, setUtils, helpers] = await Promise.all([
+  const [setData, setUtils, helpers, urlState, genericSetPageState] = await Promise.all([
     import(pathToFileURL(path.join(tempSrc, "setData.js")).href),
     import(pathToFileURL(path.join(tempSrc, "setUtils.js")).href),
     import(pathToFileURL(path.join(tempSrc, "genericSetPageHelpers.js")).href),
+    import(pathToFileURL(path.join(tempSrc, "urlState.js")).href),
+    import(pathToFileURL(path.join(tempSrc, "genericSetPageState.js")).href),
   ]);
 
-  return { setData, setUtils, helpers };
+  return { setData, setUtils, helpers, urlState, genericSetPageState };
 }
 
 export function loadSourceModules() {
