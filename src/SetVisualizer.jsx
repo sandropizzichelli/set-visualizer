@@ -85,8 +85,7 @@ function PageSwitcher({ page, setPage }) {
     <div className="page-switcher">
       <div className="page-switcher__panel">
         <div className="page-switcher__copy">
-          <div className="eyebrow">Atlante armonico</div>
-          <div className="page-switcher__title">Scegli la famiglia di set</div>
+          <div className="eyebrow">Set-class explorer</div>
         </div>
 
         <div className="page-switcher__actions">

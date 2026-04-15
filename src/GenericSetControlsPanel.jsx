@@ -14,10 +14,12 @@ import {
 function ControlSection({ eyebrow, title, children, className = "" }) {
   return (
     <section className={`control-section ${className}`.trim()}>
-      <div className="control-section__header">
-        <div className="eyebrow">{eyebrow}</div>
-        <h3 className="control-section__title">{title}</h3>
-      </div>
+      {(eyebrow || title) && (
+        <div className="control-section__header">
+          {eyebrow ? <div className="eyebrow">{eyebrow}</div> : null}
+          {title ? <h3 className="control-section__title">{title}</h3> : null}
+        </div>
+      )}
       <div className="control-section__grid">{children}</div>
     </section>
   );
@@ -75,10 +77,12 @@ export default function GenericSetControlsPanel({
   excludeOpenStrings,
   onExcludeOpenStringsChange,
 }) {
+  const showingPrimaryForm = fretboardViewMode === "prime";
+
   const selectionSection = (
     <ControlSection
-      eyebrow="Selezione del set"
-      title="Classe e accesso"
+      eyebrow={null}
+      title={null}
       className="control-section--top"
     >
       <div className="control-card control-card--wide">
@@ -161,20 +165,87 @@ export default function GenericSetControlsPanel({
     </ControlSection>
   );
 
+  const readingSection = (
+    <ControlSection
+      eyebrow={null}
+      title={null}
+      className="control-section--top control-section--collapsible"
+    >
+      <details className="control-section-disclosure" open>
+        <summary className="control-section-disclosure__summary">
+          <span>Lettura</span>
+        </summary>
+
+        <div className="control-section__grid control-section__grid--nested">
+          <div className="control-card">
+            <div className="control-card__stack">
+              <div className="segmented-row">
+                <PillButton
+                  active={!showComplement}
+                  onClick={() => onShowComplementChange(false)}
+                >
+                  Mostra {noteName}
+                </PillButton>
+                <PillButton
+                  active={showComplement}
+                  onClick={() => onShowComplementChange(true)}
+                >
+                  Mostra complementare
+                </PillButton>
+              </div>
+            </div>
+          </div>
+
+          {!showComplement && (
+            <div className="control-card">
+              <div className="control-card__stack">
+                <div className="button-row">
+                  <PillButton
+                    active={displayMode === "notes"}
+                    onClick={() => onDisplayModeChange("notes")}
+                  >
+                    Note
+                  </PillButton>
+                  <PillButton
+                    active={displayMode === "degrees"}
+                    onClick={() => onDisplayModeChange("degrees")}
+                  >
+                    {degreeButtonLabel}
+                  </PillButton>
+                  <PillButton
+                    active={displayMode === "intervals"}
+                    onClick={() => onDisplayModeChange("intervals")}
+                  >
+                    Intervalli
+                  </PillButton>
+                </div>
+                {browseMode === "iv" && (
+                  <p className="helper-text">
+                    In modalita intervallare il manico colora e nomina ogni pitch class
+                    secondo la sua distanza dal riferimento 0 della classe attiva.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </details>
+    </ControlSection>
+  );
+
   return (
     <div className="set-panel set-panel--hero">
       {selectionSection}
+      {readingSection}
 
       <div className="set-hero">
         <div className="set-hero__main">
-          <div className="eyebrow">Set-class explorer</div>
           <div className="hero-fretboard-card">
-            <div className="hero-fretboard-card__head">
-              <div className="section-title">Manico attivo</div>
-              {heroFretboardState?.badge && (
+            {heroFretboardState?.badge && (
+              <div className="hero-fretboard-card__head hero-fretboard-card__head--compact">
                 <span className="class-badge">{heroFretboardState.badge}</span>
-              )}
-            </div>
+              </div>
+            )}
 
             {heroFretboardState?.props ? (
               <Fretboard {...heroFretboardState.props} />
@@ -187,11 +258,7 @@ export default function GenericSetControlsPanel({
         </div>
 
         <aside className="hero-summary-card">
-          <div className="hero-summary-card__head">
-            <div>
-              <div className="eyebrow">Sintesi attiva</div>
-              <div className="section-title">{heroSummaryState?.title || "Sintesi attiva"}</div>
-            </div>
+          <div className="hero-summary-card__head hero-summary-card__head--compact">
             {heroSummaryState?.badge && (
               <span className="class-badge">{heroSummaryState.badge}</span>
             )}
@@ -221,38 +288,18 @@ export default function GenericSetControlsPanel({
       <div className="control-grid">
         {!showComplement && (
           <ControlSection
-            eyebrow="Visualizzazione chitarristica"
-            title="Diteggiature e filtri sul manico"
+            eyebrow={null}
+            title={null}
             className="control-section--collapsible"
           >
             <details className="control-section-disclosure" open>
               <summary className="control-section-disclosure__summary">
-                <span>Apri / chiudi controlli del manico</span>
+                <span>Controlli del manico</span>
               </summary>
 
               <div className="control-section__grid control-section__grid--nested">
                 <div className="control-card">
                   <div className="control-card__stack">
-                    <SectionTitle>Allargamento tasti</SectionTitle>
-                    <div className="range-caption">
-                      <span>Distanza massima tra il primo e l&apos;ultimo tasto del voicing</span>
-                      <strong className="range-value">{maxSpan} tasti</strong>
-                    </div>
-                    <input
-                      type="range"
-                      min="2"
-                      max="5"
-                      step="1"
-                      value={maxSpan}
-                      onChange={(event) => onMaxSpanChange(Number(event.target.value))}
-                      className="control-range"
-                    />
-                  </div>
-                </div>
-
-                <div className="control-card">
-                  <div className="control-card__stack">
-                    <SectionTitle>Manico</SectionTitle>
                     <div className="segmented-row">
                       <PillButton
                         active={fretboardViewMode === "prime"}
@@ -270,8 +317,42 @@ export default function GenericSetControlsPanel({
                   </div>
                 </div>
 
-                {!analysisMode ? (
+                {showingPrimaryForm ? (
+                  !analysisMode && (
+                    <div className="control-card control-card--wide">
+                      <div className="toggle-stack">
+                        <label className="toggle-row">
+                          <input
+                            type="checkbox"
+                            checked={showAll}
+                            onChange={(event) => onShowAllChange(event.target.checked)}
+                          />
+                          Mostra tutte le forme sul manico
+                        </label>
+                      </div>
+                    </div>
+                  )
+                ) : !analysisMode ? (
                   <>
+                    <div className="control-card">
+                      <div className="control-card__stack">
+                        <SectionTitle>Allargamento tasti</SectionTitle>
+                        <div className="range-caption">
+                          <span />
+                          <strong className="range-value">{maxSpan} tasti</strong>
+                        </div>
+                        <input
+                          type="range"
+                          min="2"
+                          max="5"
+                          step="1"
+                          value={maxSpan}
+                          onChange={(event) => onMaxSpanChange(Number(event.target.value))}
+                          className="control-range"
+                        />
+                      </div>
+                    </div>
+
                     <div className="control-card">
                       <div className="control-card__stack">
                         <SectionTitle>Tipo di voicing</SectionTitle>
@@ -297,11 +378,6 @@ export default function GenericSetControlsPanel({
                             </PillButton>
                           )}
                         </div>
-                        <p className="helper-text helper-text--small">
-                          {availableVoicingLayoutFilters.includes("spread")
-                            ? "Close: corde adiacenti. Spread: almeno un salto di corda."
-                            : "Negli esacordi il filtro si concentra sulle forme piu utili: tutte oppure close voicing."}
-                        </p>
                         <div className="inline-stats">
                           <span className="inline-stat">Close {closeVoicingCount}</span>
                           {availableVoicingLayoutFilters.includes("spread") && (
@@ -330,13 +406,6 @@ export default function GenericSetControlsPanel({
                           Mostra tutte le forme sul manico
                         </label>
 
-                        {fretboardViewMode === "prime" && (
-                          <p className="helper-text">
-                            In `Forma primaria` la spunta sovrappone tutte le posizioni utili
-                            della prime form sul manico.
-                          </p>
-                        )}
-
                         <label className="toggle-row">
                           <input
                             type="checkbox"
@@ -352,7 +421,6 @@ export default function GenericSetControlsPanel({
 
                     <div className="control-card control-card--wide">
                       <div className="control-card__stack">
-                        <SectionTitle>Approfondisci per gruppo corde</SectionTitle>
                         <details className="disclosure-card">
                           <summary className="disclosure-card__summary">
                             Gruppo corde: {groupFilter === "all" ? "tutti" : groupFilter}
@@ -385,109 +453,61 @@ export default function GenericSetControlsPanel({
                     </div>
                   </>
                 ) : (
-                  <div className="control-card control-card--wide">
-                    <div className="toggle-stack">
-                      <label className="toggle-row">
+                  <>
+                    <div className="control-card">
+                      <div className="control-card__stack">
+                        <SectionTitle>Allargamento tasti</SectionTitle>
+                        <div className="range-caption">
+                          <span />
+                          <strong className="range-value">{maxSpan} tasti</strong>
+                        </div>
                         <input
-                          type="checkbox"
-                          checked={excludeOpenStrings}
-                          onChange={(event) =>
-                            onExcludeOpenStringsChange(event.target.checked)
-                          }
+                          type="range"
+                          min="2"
+                          max="5"
+                          step="1"
+                          value={maxSpan}
+                          onChange={(event) => onMaxSpanChange(Number(event.target.value))}
+                          className="control-range"
                         />
-                        Escludi corde vuote
-                      </label>
+                      </div>
                     </div>
-                  </div>
+
+                    <div className="control-card">
+                      <div className="toggle-stack">
+                        <label className="toggle-row">
+                          <input
+                            type="checkbox"
+                            checked={excludeOpenStrings}
+                            onChange={(event) =>
+                              onExcludeOpenStringsChange(event.target.checked)
+                            }
+                          />
+                          Escludi corde vuote
+                        </label>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </details>
           </ControlSection>
         )}
 
-        <ControlSection
-          eyebrow="Lettura del set"
-          title="Come leggere il manico"
-          className="control-section--collapsible"
-        >
-          <details className="control-section-disclosure" open>
-            <summary className="control-section-disclosure__summary">
-              <span>Apri / chiudi lettura del set</span>
-            </summary>
-
-            <div className="control-section__grid control-section__grid--nested">
-              <div className="control-card">
-                <div className="control-card__stack">
-                  <SectionTitle>Modalita di vista</SectionTitle>
-                  <div className="segmented-row">
-                    <PillButton
-                      active={!showComplement}
-                      onClick={() => onShowComplementChange(false)}
-                    >
-                      Mostra {noteName}
-                    </PillButton>
-                    <PillButton
-                      active={showComplement}
-                      onClick={() => onShowComplementChange(true)}
-                    >
-                      Mostra complementare
-                    </PillButton>
-                  </div>
-                </div>
-              </div>
-
-              {!showComplement && (
-                <div className="control-card">
-                  <div className="control-card__stack">
-                    <SectionTitle>Vista</SectionTitle>
-                    <div className="button-row">
-                      <PillButton
-                        active={displayMode === "notes"}
-                        onClick={() => onDisplayModeChange("notes")}
-                      >
-                        Note
-                      </PillButton>
-                      <PillButton
-                        active={displayMode === "degrees"}
-                        onClick={() => onDisplayModeChange("degrees")}
-                      >
-                        {degreeButtonLabel}
-                      </PillButton>
-                      <PillButton
-                        active={displayMode === "intervals"}
-                        onClick={() => onDisplayModeChange("intervals")}
-                      >
-                        Intervalli
-                      </PillButton>
-                    </div>
-                    {browseMode === "iv" && (
-                      <p className="helper-text">
-                        In modalita intervallare il manico colora e nomina ogni pitch class
-                        secondo la sua distanza dal riferimento 0 della classe attiva.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </details>
-        </ControlSection>
-
         {!showComplement && (
           <ControlSection
-            eyebrow="Analisi insiemistica"
-            title="Relazioni tra classi e trasformazioni"
+            eyebrow={null}
+            title={null}
             className="control-section--collapsible"
           >
             <details className="control-section-disclosure" open>
               <summary className="control-section-disclosure__summary">
-                <span>Apri / chiudi analisi insiemistica</span>
+                <span>Analisi</span>
               </summary>
 
               <div className="control-section__grid control-section__grid--nested">
                 <div className="control-card control-card--wide">
                   <div className="control-card__stack">
-                    <SectionTitle>Subset e superset</SectionTitle>
                     <div className="segmented-row">
                       <PillButton
                         active={analysisMode === "subsets"}
@@ -502,10 +522,6 @@ export default function GenericSetControlsPanel({
                         Superset-class
                       </PillButton>
                     </div>
-
-                    <p className="helper-text helper-text--small">
-                      Clicca di nuovo sul filtro attivo per tornare al catalogo delle forme.
-                    </p>
 
                     {analysisMode === "subsets" && subsetCardinalityOptions.length > 0 && (
                       <div>
