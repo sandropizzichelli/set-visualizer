@@ -98,8 +98,16 @@ export default function GenericSetControlsPanel({
   onShowAllChange,
   excludeOpenStrings,
   onExcludeOpenStringsChange,
+  analysisMembers,
+  activeSelectedAnalysisMemberIndex,
+  onAnalysisMemberIndexChange,
+  analysisShowAllMembers,
+  onAnalysisShowAllMembersChange,
 }) {
   const showingPrimaryForm = fretboardViewMode === "prime";
+  const shouldShowHeroCatalog = !showingPrimaryForm || Boolean(analysisMode) || showComplement;
+  const shouldShowHeroAnalysisControls =
+    Boolean(analysisMode) && !showComplement && analysisMembers.length > 1;
 
   const selectionSection = (
     <ControlSection
@@ -260,7 +268,7 @@ export default function GenericSetControlsPanel({
       {selectionSection}
       {readingSection}
 
-      <div className="set-hero">
+      <div className={shouldShowHeroCatalog ? "set-hero" : "set-hero set-hero--full"}>
         <div className="set-hero__main">
           <div className="hero-fretboard-card">
             {(heroFretboardState?.badge || heroSummaryState?.badge) && (
@@ -302,6 +310,74 @@ export default function GenericSetControlsPanel({
               </p>
             ) : null}
 
+            {shouldShowHeroAnalysisControls && (
+              <div className="hero-analysis-controls">
+                <div className="picker-head">
+                  <label className="section-title">Occorrenza concreta</label>
+                  <span className="class-badge">
+                    {activeSelectedAnalysisMemberIndex + 1} / {analysisMembers.length}
+                  </span>
+                </div>
+
+                <div className="picker-row">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onAnalysisMemberIndexChange(
+                        Math.max(0, activeSelectedAnalysisMemberIndex - 1)
+                      )
+                    }
+                    disabled={activeSelectedAnalysisMemberIndex === 0}
+                    className="nav-button"
+                  >
+                    ←
+                  </button>
+
+                  <select
+                    value={activeSelectedAnalysisMemberIndex}
+                    onChange={(event) =>
+                      onAnalysisMemberIndexChange(Number(event.target.value))
+                    }
+                    className="control-select"
+                  >
+                    {analysisMembers.map((member, index) => (
+                      <option key={`hero-occurrence-${index}`} value={index}>
+                        Occorrenza {index + 1} · [{member.join(",")}]
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onAnalysisMemberIndexChange(
+                        Math.min(analysisMembers.length - 1, activeSelectedAnalysisMemberIndex + 1)
+                      )
+                    }
+                    disabled={activeSelectedAnalysisMemberIndex === analysisMembers.length - 1}
+                    className="nav-button"
+                  >
+                    →
+                  </button>
+                </div>
+
+                {!showingPrimaryForm && (
+                  <div className="toggle-stack">
+                    <label className="toggle-row">
+                      <input
+                        type="checkbox"
+                        checked={analysisShowAllMembers}
+                        onChange={(event) =>
+                          onAnalysisShowAllMembersChange(event.target.checked)
+                        }
+                      />
+                      Mostra tutte le istanze della classe sul manico
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
+
             {heroFretboardState?.props ? (
               <Fretboard {...heroFretboardState.props} />
             ) : (
@@ -312,31 +388,33 @@ export default function GenericSetControlsPanel({
           </div>
         </div>
 
-        <aside className="hero-summary-card hero-summary-card--catalog">
-          <div className="panel-header panel-header--compact">
-            <div className="panel-header__copy">
-              {heroCatalogState?.eyebrow ? (
-                <div className="eyebrow">{heroCatalogState.eyebrow}</div>
-              ) : null}
-              <h2>{heroCatalogState?.title || "Catalogo"}</h2>
+        {shouldShowHeroCatalog && (
+          <aside className="hero-summary-card hero-summary-card--catalog">
+            <div className="panel-header panel-header--compact">
+              <div className="panel-header__copy">
+                {heroCatalogState?.eyebrow ? (
+                  <div className="eyebrow">{heroCatalogState.eyebrow}</div>
+                ) : null}
+                <h2>{heroCatalogState?.title || "Catalogo"}</h2>
+              </div>
+              {heroCatalogState?.count != null && (
+                <span className="class-badge">{heroCatalogState.count}</span>
+              )}
             </div>
-            {heroCatalogState?.count != null && (
-              <span className="class-badge">{heroCatalogState.count}</span>
-            )}
-          </div>
 
-          {heroCatalogState?.items?.length ? (
-            <div className="hero-catalog-list">
-              {heroCatalogState.items.map((item) => (
-                <HeroCatalogRow key={item.key} item={item} />
-              ))}
-            </div>
-          ) : (
-            <p className="helper-text helper-text--small">
-              {heroCatalogState?.emptyNote || "Nessun risultato disponibile."}
-            </p>
-          )}
-        </aside>
+            {heroCatalogState?.items?.length ? (
+              <div className="hero-catalog-list">
+                {heroCatalogState.items.map((item) => (
+                  <HeroCatalogRow key={item.key} item={item} />
+                ))}
+              </div>
+            ) : (
+              <p className="helper-text helper-text--small">
+                {heroCatalogState?.emptyNote || "Nessun risultato disponibile."}
+              </p>
+            )}
+          </aside>
+        )}
       </div>
 
       <div className="control-grid">

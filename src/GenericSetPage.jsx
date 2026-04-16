@@ -146,6 +146,7 @@ export default function GenericSetPage({
   const [analysisShowAllVoicings, setAnalysisShowAllVoicings] = useState(
     initialUrlState.analysisShowAllVoicings
   );
+  const [analysisShowAllMembers, setAnalysisShowAllMembers] = useState(false);
   const [analysisBassFilter, setAnalysisBassFilter] = useState(
     initialUrlState.analysisBassFilter
   );
@@ -629,6 +630,53 @@ export default function GenericSetPage({
     Boolean(selectedAnalysisClass?.primeForm?.length) &&
     Boolean(analysisPrimaryFormVoicing);
 
+  const analysisAllMemberTargetPcs = useMemo(
+    () =>
+      [...new Set((analysisMembers || []).flat().map((pc) => ((pc % 12) + 12) % 12))].sort(
+        (first, second) => first - second
+      ),
+    [analysisMembers]
+  );
+
+  const analysisAllMemberDegreeMap = useMemo(() => {
+    const map = new Map();
+    analysisAllMemberTargetPcs.forEach((pc) => {
+      map.set(pc, pc);
+    });
+    return map;
+  }, [analysisAllMemberTargetPcs]);
+
+  const analysisAllMemberVoicings = useMemo(
+    () =>
+      analysisMembers
+        .map((member, index) => {
+          const finder = getVoicingFinderByCardinality(member.length);
+          if (!finder) return null;
+
+          let occurrences = finder(member, maxSpan).map((voicing) => ({
+            ...voicing,
+            primeForm: selectedAnalysisClass?.primeForm || primeForm(member),
+            forteName: selectedAnalysisClass?.forteName || null,
+          }));
+
+          if (excludeOpenStrings) {
+            occurrences = occurrences.filter((voicing) =>
+              voicing.positions.every((position) => position.fret > 0)
+            );
+          }
+
+          const representative = groupVoicingsByStructure(occurrences)[0];
+          if (!representative) return null;
+
+          return {
+            ...representative,
+            key: `analysis-member-${index}`,
+          };
+        })
+        .filter(Boolean),
+    [analysisMembers, maxSpan, excludeOpenStrings, selectedAnalysisClass]
+  );
+
   const analysisPrimaryFormDegreeMap = useMemo(() => {
     if (!selectedAnalysisClass?.primeForm?.length) return null;
 
@@ -849,6 +897,7 @@ export default function GenericSetPage({
 
   const handleSelectedForteChange = (forte) => {
     const nextState = buildForteSelectionState(forte, dataMap);
+    setAnalysisShowAllMembers(false);
     applySetPresentationPatch(nextState);
     setSelectedForte(nextState.selectedForte);
     if (nextState.selectedIntervalVector) {
@@ -862,6 +911,7 @@ export default function GenericSetPage({
       intervalVectorMap
     );
 
+    setAnalysisShowAllMembers(false);
     applySetPresentationPatch(nextState);
     setSelectedIntervalVector(nextState.selectedIntervalVector);
 
@@ -884,6 +934,7 @@ export default function GenericSetPage({
 
   const handleAnalysisModeChange = (mode) => {
     setAnalysisMode((current) => (current === mode ? null : mode));
+    setAnalysisShowAllMembers(false);
     resetAnalysisClassSelection({ clearClass: true });
   };
 
@@ -924,22 +975,26 @@ export default function GenericSetPage({
   const handleSelectAnalysisClass = (classKey) => {
     setSelectedAnalysisClassKey(classKey);
     setSelectedAnalysisMemberIndex(0);
+    setAnalysisShowAllMembers(false);
     setAnalysisBassFilter("all");
     resetAnalysisVoicingSelection();
   };
 
   const handleAnalysisMemberIndexChange = (index) => {
     setSelectedAnalysisMemberIndex(index);
+    setAnalysisShowAllMembers(false);
     resetAnalysisVoicingSelection();
   };
 
   const handleAnalysisBassFilterChange = (value) => {
     setAnalysisBassFilter(value);
+    setAnalysisShowAllMembers(false);
     setSelectedAnalysisVoicingIndex(0);
   };
 
   const handleSelectAnalysisVoicing = (index) => {
     setSelectedAnalysisVoicingIndex(index);
+    setAnalysisShowAllMembers(false);
     if (analysisShowAllVoicings) {
       setAnalysisShowAllVoicings(false);
     }
@@ -999,9 +1054,14 @@ export default function GenericSetPage({
     }
 
     const showingPrimaryForm = fretboardViewMode === "prime";
+    const shouldShowAllMembers = analysisShowAllMembers && !showingPrimaryForm;
+    const effectiveAnalysisDisplayMode =
+      shouldShowAllMembers && displayMode === "intervals" ? "degrees" : displayMode;
 
     return {
-      badge: showingPrimaryForm
+      badge: shouldShowAllMembers
+        ? "Istanze sovrapposte"
+        : showingPrimaryForm
         ? analysisShowAllVoicings
           ? "Prime form sovrapposte"
           : "Prime form"
@@ -1009,41 +1069,53 @@ export default function GenericSetPage({
           ? "Posizioni sovrapposte"
           : "Occorrenza selezionata",
       props: {
-        voicing: showingPrimaryForm
+        voicing: shouldShowAllMembers
+          ? null
+          : showingPrimaryForm
           ? canRenderAnalysisPrimaryForm
             ? analysisPrimaryFormVoicing
             : null
           : canRenderAnalysisVoicings
             ? selectedAnalysisVoicing
             : null,
-        allTargetPcs: showingPrimaryForm
+        allTargetPcs: shouldShowAllMembers
+          ? analysisAllMemberTargetPcs
+          : showingPrimaryForm
           ? filteredAnalysisPrimaryFormTargetPcs
           : filteredAnalysisTargetPcs,
-        allVoicings: showingPrimaryForm
+        allVoicings: shouldShowAllMembers
+          ? analysisAllMemberVoicings
+          : showingPrimaryForm
           ? analysisPrimaryFormVoicings
           : !canRenderAnalysisVoicings
             ? []
             : analysisFilteredVoicings,
-        showAll: showingPrimaryForm
+        showAll: shouldShowAllMembers
+          ? true
+          : showingPrimaryForm
           ? analysisShowAllVoicings
           : !canRenderAnalysisVoicings
             ? false
             : analysisShowAllVoicings,
-        displayMode,
-        degreeMap: showingPrimaryForm
+        displayMode: effectiveAnalysisDisplayMode,
+        degreeMap: shouldShowAllMembers
+          ? analysisAllMemberDegreeMap
+          : showingPrimaryForm
           ? analysisPrimaryFormDegreeMap
           : analysisDegreeMap,
-        intervalMap: showingPrimaryForm
+        intervalMap: shouldShowAllMembers
+          ? null
+          : showingPrimaryForm
           ? analysisPrimaryFormIntervalMap
           : analysisIntervalMap,
         selectedIntervalClasses: activeSelectedIntervalClasses,
-        showTargetMap: !showingPrimaryForm,
+        showTargetMap: shouldShowAllMembers ? false : !showingPrimaryForm,
         extraTargetPcs:
-          showingPrimaryForm || !selectedOccurrenceSummary
+          shouldShowAllMembers || showingPrimaryForm || !selectedOccurrenceSummary
             ? []
             : selectedOccurrenceSummary.missingPcs,
-        pcRoleMap: showingPrimaryForm ? null : analysisPcRoleMap,
-        expandOccurrencesInShowAll: showingPrimaryForm,
+        pcRoleMap: shouldShowAllMembers || showingPrimaryForm ? null : analysisPcRoleMap,
+        expandOccurrencesInShowAll: shouldShowAllMembers ? false : showingPrimaryForm,
       },
     };
   }, [
@@ -1072,6 +1144,10 @@ export default function GenericSetPage({
     filteredAnalysisTargetPcs,
     analysisPrimaryFormVoicings,
     analysisFilteredVoicings,
+    analysisShowAllMembers,
+    analysisAllMemberTargetPcs,
+    analysisAllMemberVoicings,
+    analysisAllMemberDegreeMap,
     analysisPrimaryFormDegreeMap,
     analysisDegreeMap,
     analysisPrimaryFormIntervalMap,
@@ -1153,8 +1229,10 @@ export default function GenericSetPage({
           value: analysisOccurrenceSummary?.classTransform || "n.d.",
         },
       ],
-      note: selectedAnalysisMember
-        ? analysisMode === "subsets"
+        note: selectedAnalysisMember
+        ? analysisShowAllMembers
+          ? `${analysisMembers.length} istanze della classe sul manico con un voicing rappresentativo per ciascuna`
+          : analysisMode === "subsets"
           ? `Occorrenza [${selectedAnalysisMember.join(",")}] · Gradi presenti ${formatDegreeList(
               analysisOccurrenceSummary?.retainedDegrees || []
             )}`
@@ -1171,6 +1249,8 @@ export default function GenericSetPage({
     selectedAnalysisClass,
     selectedAnalysisMember,
     analysisOccurrenceSummary,
+    analysisShowAllMembers,
+    analysisMembers,
     fretboardViewMode,
     displayMode,
     browseMode,
@@ -1391,6 +1471,11 @@ export default function GenericSetPage({
           onShowAllChange={setShowAll}
           excludeOpenStrings={excludeOpenStrings}
           onExcludeOpenStringsChange={handleExcludeOpenStringsChange}
+          analysisMembers={analysisMembers}
+          activeSelectedAnalysisMemberIndex={activeSelectedAnalysisMemberIndex}
+          onAnalysisMemberIndexChange={handleAnalysisMemberIndexChange}
+          analysisShowAllMembers={analysisShowAllMembers}
+          onAnalysisShowAllMembersChange={setAnalysisShowAllMembers}
         />
 
         <div className="set-page__grid">
@@ -1468,6 +1553,8 @@ export default function GenericSetPage({
             onAnalysisBassFilterChange={handleAnalysisBassFilterChange}
             analysisShowAllVoicings={analysisShowAllVoicings}
             onAnalysisShowAllVoicingsChange={setAnalysisShowAllVoicings}
+            analysisShowAllMembers={analysisShowAllMembers}
+            onAnalysisShowAllMembersChange={setAnalysisShowAllMembers}
             analysisFilteredVoicings={analysisFilteredVoicings}
             analysisPrimaryFormVoicings={analysisPrimaryFormVoicings}
             activeSelectedAnalysisVoicingIndex={activeSelectedAnalysisVoicingIndex}

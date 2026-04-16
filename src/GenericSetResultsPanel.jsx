@@ -5,7 +5,6 @@ import VoicingCard from "./VoicingCard";
 import {
   buildIntervalClassBreakdown,
   buildOccurrenceSummary,
-  describeOccurrenceTransform,
   formatDegreeList,
   formatIntervalVector,
   formatPitchClassList,
@@ -69,8 +68,6 @@ export default function GenericSetResultsPanel({
   onSelectFamilyClass,
   selectedAnalysisClass,
   analysisMembers,
-  activeSelectedAnalysisMemberIndex,
-  onAnalysisMemberIndexChange,
   canRenderAnalysisVoicings,
   selectedAnalysisMember,
   analysisBassFilter,
@@ -78,6 +75,7 @@ export default function GenericSetResultsPanel({
   onAnalysisBassFilterChange,
   analysisShowAllVoicings,
   onAnalysisShowAllVoicingsChange,
+  analysisShowAllMembers,
   analysisFilteredVoicings,
   analysisPrimaryFormVoicings,
   activeSelectedAnalysisVoicingIndex,
@@ -175,69 +173,6 @@ export default function GenericSetResultsPanel({
                     />
                   </div>
 
-                  {analysisMembers.length > 0 && (
-                    <div className="panel-stack">
-                      <div className="picker-head">
-                        <label className="section-title">Occorrenza concreta</label>
-                        <ClassBadge>
-                          {activeSelectedAnalysisMemberIndex + 1} / {analysisMembers.length}
-                        </ClassBadge>
-                      </div>
-
-                      <div className="picker-row">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onAnalysisMemberIndexChange(
-                              Math.max(0, activeSelectedAnalysisMemberIndex - 1)
-                            )
-                          }
-                          disabled={activeSelectedAnalysisMemberIndex === 0}
-                          className="nav-button"
-                        >
-                          ←
-                        </button>
-
-                        <select
-                          value={activeSelectedAnalysisMemberIndex}
-                          onChange={(event) =>
-                            onAnalysisMemberIndexChange(Number(event.target.value))
-                          }
-                          className="control-select"
-                        >
-                          {analysisMembers.map((member, index) => (
-                            <option
-                              key={`${getClassKey(selectedAnalysisClass)}-${index}`}
-                              value={index}
-                            >
-                              Occorrenza {index + 1} ·{" "}
-                              {describeOccurrenceTransform(selectedAnalysisClass.primeForm, member)} · [
-                              {member.join(",")}]
-                            </option>
-                          ))}
-                        </select>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onAnalysisMemberIndexChange(
-                              Math.min(
-                                analysisMembers.length - 1,
-                                activeSelectedAnalysisMemberIndex + 1
-                              )
-                            )
-                          }
-                          disabled={
-                            activeSelectedAnalysisMemberIndex === analysisMembers.length - 1
-                          }
-                          className="nav-button"
-                        >
-                          →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   {selectedAnalysisMember && selectedOccurrenceSummary && (
                     <div className="panel-stack">
                       <div className="picker-head">
@@ -292,32 +227,43 @@ export default function GenericSetResultsPanel({
                   {canRenderAnalysisVoicings || showingPrimaryForm ? (
                     <>
                       {!showingPrimaryForm && (
-                        <div className="control-card__stack">
-                          <BassButtons
-                            options={analysisBassOptions}
-                            value={analysisBassFilter}
-                            onChange={onAnalysisBassFilterChange}
-                          />
-                        </div>
+                        <>
+                          {!analysisShowAllMembers && (
+                            <div className="control-card__stack">
+                              <BassButtons
+                                options={analysisBassOptions}
+                                value={analysisBassFilter}
+                                onChange={onAnalysisBassFilterChange}
+                              />
+                            </div>
+                          )}
+                        </>
                       )}
 
-                      <div className="toggle-stack">
-                        <label className="toggle-row">
-                          <input
-                            type="checkbox"
-                            checked={analysisShowAllVoicings}
-                            onChange={(event) =>
-                              onAnalysisShowAllVoicingsChange(event.target.checked)
-                            }
-                          />
-                          Mostra tutte le forme di questa occorrenza sul manico
-                        </label>
-                      </div>
+                      {!analysisShowAllMembers && (
+                        <div className="toggle-stack">
+                          <label className="toggle-row">
+                            <input
+                              type="checkbox"
+                              checked={analysisShowAllVoicings}
+                              onChange={(event) =>
+                                onAnalysisShowAllVoicingsChange(event.target.checked)
+                              }
+                            />
+                            Mostra tutte le forme di questa occorrenza sul manico
+                          </label>
+                        </div>
+                      )}
 
                       {showingPrimaryForm ? (
                         <p className="helper-text helper-text--small">
                           {analysisPrimaryFormVoicings.length} posizioni utili della
                           forma primaria disponibili per questa classe.
+                        </p>
+                      ) : analysisShowAllMembers ? (
+                        <p className="helper-text helper-text--small">
+                          {analysisMembers.length} istanze concrete della classe sono
+                          mostrate sul manico con un voicing rappresentativo per ciascuna.
                         </p>
                       ) : (
                         <div className="panel-stack">
@@ -336,7 +282,7 @@ export default function GenericSetResultsPanel({
                               <VoicingCard
                                 key={`${analysisMode}-${getClassKey(
                                   selectedAnalysisClass
-                                )}-${activeSelectedAnalysisMemberIndex}-${index}-${voicing.positions
+                                )}-${selectedAnalysisMember?.join("-") || "member"}-${index}-${voicing.positions
                                   .map((position) => `${position.stringIndex}-${position.fret}`)
                                   .join("-")}`}
                                 voicing={voicing}
