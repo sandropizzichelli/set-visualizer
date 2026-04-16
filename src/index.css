@@ -1504,14 +1504,16 @@ code,
 
 .fretboard-surface__nut {
   position: absolute;
-  left: 0;
+  left: var(--cell-width);
   top: 0;
   bottom: 0;
   width: 12px;
-  border-radius: 12px 0 0 12px;
+  transform: translateX(-50%);
+  border-radius: 12px;
   background: linear-gradient(180deg, #8b8b8b 0%, #6f6f6f 100%);
   box-shadow:
     inset -1px 0 0 rgba(255, 255, 255, 0.24),
+    0 0 0 1px rgba(53, 53, 53, 0.08),
     2px 0 0 rgba(53, 53, 53, 0.2);
 }
 

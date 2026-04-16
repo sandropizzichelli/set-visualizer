@@ -212,8 +212,8 @@ export default function Fretboard({
             <div className="fretboard-surface__wood" />
             <div className="fretboard-surface__nut" />
 
-            {Array.from({ length: FRET_COUNT }, (_, index) => {
-              const fret = index + 1;
+            {Array.from({ length: Math.max(FRET_COUNT - 1, 0) }, (_, index) => {
+              const fret = index + 2;
 
               return (
                 <div
