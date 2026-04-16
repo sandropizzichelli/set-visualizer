@@ -1159,7 +1159,9 @@ export default function GenericSetPage({
   const heroSummaryState = useMemo(() => {
     const badge = showComplement
       ? "Complementare"
-      : activeSet?.transformLabel || null;
+      : activeSet?.transformLabel === "Originale"
+        ? null
+        : activeSet?.transformLabel || null;
 
     if (showComplement) {
       return {
