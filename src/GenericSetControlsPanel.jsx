@@ -49,9 +49,12 @@ function HeroCatalogRow({ item }) {
 export default function GenericSetControlsPanel({
   keyLabel,
   browseMode,
+  activeSet,
+  intervalVectorFamilyClasses,
   heroFretboardState,
   heroSummaryState,
   heroCatalogState,
+  onSelectFamilyClass,
   onBrowseModeChange,
   sortedKeys,
   dataMap,
@@ -98,6 +101,9 @@ export default function GenericSetControlsPanel({
   onShowAllChange,
   excludeOpenStrings,
   onExcludeOpenStringsChange,
+  selectedIntervalClasses,
+  onToggleIntervalClass,
+  onClearIntervalClassFilter,
   analysisMembers,
   activeSelectedAnalysisMemberIndex,
   onAnalysisMemberIndexChange,
@@ -108,6 +114,13 @@ export default function GenericSetControlsPanel({
   const shouldShowHeroCatalog = !showingPrimaryForm || Boolean(analysisMode) || showComplement;
   const shouldShowHeroAnalysisControls =
     Boolean(analysisMode) && !showComplement && analysisMembers.length > 1;
+  const shouldShowHeroIntervalFilters =
+    browseMode === "iv" && !showComplement && !analysisMode && activeSet?.intervalClassBreakdown;
+  const shouldShowHeroIntervalFamily =
+    browseMode === "iv" &&
+    !showComplement &&
+    !analysisMode &&
+    intervalVectorFamilyClasses.length > 1;
 
   const selectionSection = (
     <ControlSection
@@ -384,6 +397,70 @@ export default function GenericSetControlsPanel({
               <p className="helper-text">
                 Seleziona una classe o un&apos;occorrenza per visualizzare il manico qui in alto.
               </p>
+            )}
+
+            {shouldShowHeroIntervalFilters && (
+              <div className="hero-interval-filters">
+                <div className="picker-head">
+                  <div className="section-title">Ic</div>
+                  {selectedIntervalClasses.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={onClearIntervalClassFilter}
+                      className="interval-filter-reset"
+                    >
+                      Mostra tutto
+                    </button>
+                  )}
+                </div>
+
+                <div className="interval-breakdown interval-breakdown--compact">
+                  {activeSet.intervalClassBreakdown.map((item) => (
+                    <button
+                      key={`hero-ic-${item.ic}`}
+                      type="button"
+                      onClick={() => onToggleIntervalClass(item.ic)}
+                      disabled={item.count === 0}
+                      className={
+                        selectedIntervalClasses.includes(item.ic)
+                          ? "interval-breakdown__chip interval-breakdown__chip--active"
+                          : "interval-breakdown__chip"
+                      }
+                    >
+                      <span>{`ic${item.ic}`}</span>
+                      <strong>{item.count}</strong>
+                    </button>
+                  ))}
+                </div>
+
+                {shouldShowHeroIntervalFamily && (
+                  <details className="disclosure-card hero-interval-family" open>
+                    <summary className="disclosure-card__summary">
+                      <span>{`Famiglia IV · ${intervalVectorFamilyClasses.length}`}</span>
+                    </summary>
+
+                    <div className="disclosure-card__body">
+                      <div className="hero-interval-family__grid">
+                        {intervalVectorFamilyClasses.map((item) => (
+                          <button
+                            key={`hero-family-${item.forteName}`}
+                            type="button"
+                            onClick={() => onSelectFamilyClass(item.forteName)}
+                            className={
+                              item.forteName === activeSet?.forteName
+                                ? "hero-interval-family__card hero-interval-family__card--active"
+                                : "hero-interval-family__card"
+                            }
+                          >
+                            <strong>{item.forteName}</strong>
+                            <span>{`PF [${item.primeForm.join(",")}]`}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
+                )}
+              </div>
             )}
           </div>
         </div>

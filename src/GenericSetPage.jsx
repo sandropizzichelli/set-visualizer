@@ -1424,9 +1424,12 @@ export default function GenericSetPage({
         <GenericSetControlsPanel
           keyLabel={keyLabel}
           browseMode={browseMode}
+          activeSet={activeSet}
+          intervalVectorFamilyClasses={intervalVectorFamilyClasses}
           heroFretboardState={heroFretboardState}
           heroSummaryState={heroSummaryState}
           heroCatalogState={heroCatalogState}
+          onSelectFamilyClass={handleSelectedForteChange}
           onBrowseModeChange={handleBrowseModeChange}
           sortedKeys={sortedKeys}
           dataMap={dataMap}
@@ -1473,6 +1476,9 @@ export default function GenericSetPage({
           onShowAllChange={setShowAll}
           excludeOpenStrings={excludeOpenStrings}
           onExcludeOpenStringsChange={handleExcludeOpenStringsChange}
+          selectedIntervalClasses={activeSelectedIntervalClasses}
+          onToggleIntervalClass={handleToggleIntervalClass}
+          onClearIntervalClassFilter={handleClearIntervalClassFilter}
           analysisMembers={analysisMembers}
           activeSelectedAnalysisMemberIndex={activeSelectedAnalysisMemberIndex}
           onAnalysisMemberIndexChange={handleAnalysisMemberIndexChange}

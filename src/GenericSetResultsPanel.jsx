@@ -3,7 +3,6 @@ import { PC_TO_NAME } from "./setData";
 import { BassButtons } from "./SetControls";
 import VoicingCard from "./VoicingCard";
 import {
-  buildIntervalClassBreakdown,
   buildOccurrenceSummary,
   formatDegreeList,
   formatIntervalVector,
@@ -24,48 +23,13 @@ function DetailChip({ label, value }) {
   );
 }
 
-function FamilyClassCard({ item, active, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={active ? "family-class-card family-class-card--active" : "family-class-card"}
-    >
-      <div className="family-class-card__top">
-        <div className="family-class-card__title">{item.forteName || "n.d."}</div>
-        <span className="class-badge">{formatIntervalVector(item.iv)}</span>
-      </div>
-      <div className="family-class-card__meta">PF [{item.primeForm.join(",")}]</div>
-    </button>
-  );
-}
-
-function IntervalBreakdown({ intervalVector }) {
-  const breakdown = buildIntervalClassBreakdown(intervalVector);
-
-  return (
-    <div className="interval-breakdown">
-      {breakdown.map((item) => (
-        <div key={item.ic} className="interval-breakdown__chip">
-          <span>{`ic${item.ic}`}</span>
-          <strong>{item.count}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function GenericSetResultsPanel({
-  browseMode,
   showComplement,
   analysisMode,
   fretboardViewMode,
   noteName,
   displayMode,
   activeSet,
-  intervalVectorFamilyClasses,
-  selectedIntervalVector,
-  onSelectFamilyClass,
   selectedAnalysisClass,
   analysisMembers,
   canRenderAnalysisVoicings,
@@ -93,52 +57,14 @@ export default function GenericSetResultsPanel({
     selectedAnalysisMember
   );
 
-  if (!showComplement && !analysisMode && browseMode !== "iv") {
+  if (!showComplement && !analysisMode) {
     return null;
   }
 
   return (
     <div className="set-panel">
       {!showComplement ? (
-        !analysisMode ? (
-          <>
-            {browseMode === "iv" && activeSet && (
-              <div className="analysis-card">
-                <div className="panel-stack">
-                  <div className="picker-head">
-                    <div>
-                      <div className="eyebrow">Relazioni intervallari</div>
-                      <h2>Famiglia interval vector</h2>
-                    </div>
-                    <ClassBadge>{intervalVectorFamilyClasses.length}</ClassBadge>
-                  </div>
-
-                  <div className="detail-grid">
-                    <DetailChip
-                      label="IV condiviso"
-                      value={formatIntervalVector(selectedIntervalVector)}
-                    />
-                    <DetailChip label="Classe attiva" value={activeSet.forteName || "n.d."} />
-                    <DetailChip label="Prime form" value={`[${activeSet.primeForm.join(",")}]`} />
-                  </div>
-
-                  <IntervalBreakdown intervalVector={selectedIntervalVector} />
-
-                  <div className="family-class-grid">
-                    {intervalVectorFamilyClasses.map((item) => (
-                      <FamilyClassCard
-                        key={`family-${item.forteName}`}
-                        item={item}
-                        active={item.forteName === activeSet.forteName}
-                        onClick={() => onSelectFamilyClass(item.forteName)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
+        analysisMode ? (
           <>
             <div className="panel-header">
               <div className="panel-header__copy">
@@ -316,7 +242,7 @@ export default function GenericSetResultsPanel({
               </div>
             )}
           </>
-        )
+        ) : null
       ) : (
         <>
           <div className="panel-header">
