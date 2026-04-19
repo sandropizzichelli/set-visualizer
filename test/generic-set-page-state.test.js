@@ -70,6 +70,51 @@ test("getAvailableVoicingLayoutFilters rimuove spread negli esacordi", async () 
   );
 });
 
+test("getAvailableBrowseModes aggiunge Per generi da tetracordi in su", async () => {
+  const { genericSetPageState } = await loadSourceModules();
+
+  assert.deepEqual(genericSetPageState.getAvailableBrowseModes(3), ["forte", "iv"]);
+  assert.deepEqual(genericSetPageState.getAvailableBrowseModes(4), [
+    "forte",
+    "iv",
+    "genus",
+  ]);
+});
+
+test("buildUrlStateFromParams legge la chiave di accesso per generi", async () => {
+  const { genericSetPageState } = await loadSourceModules();
+
+  const keys = ["5-1", "5-2", "5-Z36"];
+  const dataMap = {
+    "5-1": { iv: "432100" },
+    "5-2": { iv: "322110" },
+    "5-Z36": { iv: "222222" },
+  };
+  const params = new URLSearchParams("browse=genus&genus=5&forte=5-1");
+
+  const state = genericSetPageState.buildUrlStateFromParams(
+    params,
+    keys,
+    dataMap,
+    5
+  );
+
+  assert.equal(state.browseMode, "genus");
+  assert.equal(state.selectedGenusId, "5");
+  assert.equal(state.selectedForte, "5-1");
+});
+
+test("la mappa dei genera risolve correttamente anche le classi Z", async () => {
+  const { setData } = await loadSourceModules();
+
+  const pentachordGenera = setData.getForteGeneraForCardinality(5);
+  const chromaticGenus = pentachordGenera.find((genus) => genus.id === "5");
+
+  assert.ok(chromaticGenus);
+  assert.ok(chromaticGenus.keys.includes("5-1"));
+  assert.ok(chromaticGenus.keys.includes("5-Z36"));
+});
+
 test("le utility URL scrivono e cancellano i parametri in modo coerente", async () => {
   const { urlState } = await loadSourceModules();
 

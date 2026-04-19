@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { DEFAULT_MAX_SPAN } from "./setData";
+import { DEFAULT_MAX_SPAN, getForteGeneraForCardinality } from "./setData";
 import {
   parsePfString,
   transformPcs,
@@ -46,6 +46,7 @@ import {
 } from "./genericSetPageState";
 import {
   buildForteSelectionState,
+  buildGenusSelectionState,
   buildIntervalVectorSelectionState,
   getDisplayModeAfterBrowseModeChange,
 } from "./genericSetPageTransitions";
@@ -101,6 +102,9 @@ export default function GenericSetPage({
   const [selectedForte, setSelectedForte] = useState(initialUrlState.selectedForte);
   const [selectedIntervalVector, setSelectedIntervalVector] = useState(
     initialUrlState.selectedIntervalVector
+  );
+  const [selectedGenusId, setSelectedGenusId] = useState(
+    initialUrlState.selectedGenusId
   );
   const [selected, setSelected] = useState(initialUrlState.selected);
   const [maxSpan, setMaxSpan] = useState(initialUrlState.maxSpan);
@@ -226,6 +230,32 @@ export default function GenericSetPage({
     [intervalVectorMap, selectedIntervalVector]
   );
 
+  const genusOptions = useMemo(
+    () =>
+      getForteGeneraForCardinality(noteCount)
+        .map((genus) => ({
+          ...genus,
+          keys: genus.keys.filter((key) => sortedKeys.includes(key)),
+        }))
+        .filter((genus) => genus.keys.length > 0),
+    [noteCount, sortedKeys]
+  );
+
+  const genusMap = useMemo(
+    () => new Map(genusOptions.map((genus) => [genus.id, genus])),
+    [genusOptions]
+  );
+
+  const selectedGenus = useMemo(
+    () => genusMap.get(selectedGenusId) || genusOptions[0] || null,
+    [genusMap, genusOptions, selectedGenusId]
+  );
+
+  const genusMatches = useMemo(
+    () => selectedGenus?.keys || [],
+    [selectedGenus]
+  );
+
   const intervalVectorFamilyClasses = useMemo(
     () =>
       intervalVectorMatches.map((key) => ({
@@ -246,8 +276,16 @@ export default function GenericSetPage({
       return intervalVectorMatches[0] || selectedForte || sortedKeys[0];
     }
 
+    if (browseMode === "genus") {
+      if (genusMatches.includes(selectedForte)) {
+        return selectedForte;
+      }
+
+      return genusMatches[0] || selectedForte || sortedKeys[0];
+    }
+
     return selectedForte;
-  }, [browseMode, intervalVectorMatches, selectedForte, sortedKeys]);
+  }, [browseMode, intervalVectorMatches, genusMatches, selectedForte, sortedKeys]);
 
   const subsetCardinalityOptions = useMemo(() => {
     const options = [];
@@ -891,6 +929,24 @@ export default function GenericSetPage({
       }
     }
 
+    if (mode === "genus") {
+      const nextGenusId =
+        (selectedGenusId && genusMap.has(selectedGenusId) && selectedGenusId) ||
+        genusOptions[0]?.id ||
+        null;
+      const nextState = buildGenusSelectionState(nextGenusId, genusMap, dataMap);
+
+      setSelectedGenusId(nextState.selectedGenusId);
+
+      if (nextState.selectedForte) {
+        setSelectedForte(nextState.selectedForte);
+      }
+
+      if (nextState.selectedIntervalVector) {
+        setSelectedIntervalVector(nextState.selectedIntervalVector);
+      }
+    }
+
     resetPrimaryVoicingSelection();
     resetAnalysisClassSelection({ clearClass: true });
   };
@@ -917,6 +973,22 @@ export default function GenericSetPage({
 
     if (nextState.selectedForte) {
       setSelectedForte(nextState.selectedForte);
+    }
+  };
+
+  const handleSelectedGenusChange = (genusId) => {
+    const nextState = buildGenusSelectionState(genusId, genusMap, dataMap);
+
+    setAnalysisShowAllMembers(false);
+    applySetPresentationPatch(nextState);
+    setSelectedGenusId(nextState.selectedGenusId);
+
+    if (nextState.selectedForte) {
+      setSelectedForte(nextState.selectedForte);
+    }
+
+    if (nextState.selectedIntervalVector) {
+      setSelectedIntervalVector(nextState.selectedIntervalVector);
     }
   };
 
@@ -1204,6 +1276,8 @@ export default function GenericSetPage({
           getDisplayModeLabel(displayMode),
           browseMode === "iv"
             ? `${intervalVectorFamilyClasses.length} classi nella famiglia IV`
+            : browseMode === "genus" && selectedGenus
+              ? `${selectedGenus.label} · ${genusMatches.length} classi`
             : null,
         ]
           .filter(Boolean)
@@ -1257,6 +1331,8 @@ export default function GenericSetPage({
     displayMode,
     browseMode,
     intervalVectorFamilyClasses,
+    selectedGenus,
+    genusMatches,
   ]);
 
   const heroCatalogState = showComplement
@@ -1311,6 +1387,11 @@ export default function GenericSetPage({
         params,
         "iv",
         browseMode === "iv" ? selectedIntervalVector : null
+      );
+      setSearchParam(
+        params,
+        "genus",
+        browseMode === "genus" ? selectedGenus?.id || selectedGenusId : null
       );
       setSearchParam(params, "span", maxSpan === DEFAULT_MAX_SPAN ? null : maxSpan);
       setSearchParam(
@@ -1395,6 +1476,8 @@ export default function GenericSetPage({
     browseMode,
     activeSelectedForte,
     selectedIntervalVector,
+    selectedGenus,
+    selectedGenusId,
     maxSpan,
     fretboardViewMode,
     analysisMode,
@@ -1439,6 +1522,10 @@ export default function GenericSetPage({
           onSelectedIntervalVectorChange={handleSelectedIntervalVectorChange}
           intervalVectorOptions={intervalVectorOptions}
           intervalVectorMatches={intervalVectorMatches}
+          genusOptions={genusOptions}
+          selectedGenusId={selectedGenus?.id || selectedGenusId}
+          onSelectedGenusChange={handleSelectedGenusChange}
+          genusMatches={genusMatches}
           maxSpan={maxSpan}
           onMaxSpanChange={handleMaxSpanChange}
           fretboardViewMode={fretboardViewMode}

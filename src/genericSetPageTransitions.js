@@ -37,6 +37,18 @@ export function buildIntervalVectorSelectionState(intervalVector, intervalVector
   };
 }
 
+export function buildGenusSelectionState(genusId, genusMap, dataMap) {
+  const selectedGenus = genusMap.get(genusId) || null;
+  const selectedForte = selectedGenus?.keys?.[0] || null;
+
+  return {
+    ...buildSetPresentationDefaults(),
+    selectedGenusId: selectedGenus?.id || null,
+    selectedForte,
+    selectedIntervalVector: selectedForte ? dataMap[selectedForte]?.iv || null : null,
+  };
+}
+
 export function getDisplayModeAfterBrowseModeChange(mode, currentDisplayMode) {
   if (mode === "iv" && currentDisplayMode === "notes") {
     return "intervals";

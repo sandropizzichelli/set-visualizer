@@ -58,6 +58,37 @@ test("buildIntervalVectorSelectionState azzera la presentazione e sceglie la pri
   assert.deepEqual(state.selectedIntervalClasses, []);
 });
 
+test("buildGenusSelectionState azzera la presentazione e sceglie la prima classe del genus", async () => {
+  const { genericSetPageTransitions } = await loadSourceModules();
+
+  const genusMap = new Map([
+    [
+      "5",
+      {
+        id: "5",
+        keys: ["5-1", "5-Z36"],
+      },
+    ],
+  ]);
+  const dataMap = {
+    "5-1": { iv: "432100" },
+    "5-Z36": { iv: "222222" },
+  };
+
+  const state = genericSetPageTransitions.buildGenusSelectionState(
+    "5",
+    genusMap,
+    dataMap
+  );
+
+  assert.equal(state.selectedGenusId, "5");
+  assert.equal(state.selectedForte, "5-1");
+  assert.equal(state.selectedIntervalVector, "432100");
+  assert.equal(state.fretboardViewMode, "prime");
+  assert.equal(state.displayMode, "degrees");
+  assert.equal(state.analysisMode, null);
+});
+
 test("getDisplayModeAfterBrowseModeChange forza Intervalli solo entrando in IV mode da Note", async () => {
   const { genericSetPageTransitions } = await loadSourceModules();
 

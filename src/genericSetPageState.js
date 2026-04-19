@@ -4,11 +4,12 @@ import {
   readIntegerParam,
   readStringParam,
 } from "./urlState";
+import { getForteGeneraForCardinality } from "./setData";
 
 const ANALYSIS_MODES = ["subsets", "supersets"];
 const DISPLAY_MODES = ["notes", "degrees", "intervals"];
 const TRANSFORM_MODES = ["base", "tn", "tni"];
-const BROWSE_MODES = ["forte", "iv"];
+const ALL_BROWSE_MODES = ["forte", "iv", "genus"];
 const FRETBOARD_VIEW_MODES = ["voicing", "prime"];
 const VOICING_LAYOUT_FILTERS = ["all", "close", "spread"];
 const DEFAULT_DISPLAY_MODE = "degrees";
@@ -18,6 +19,10 @@ const MAX_MAX_SPAN = 5;
 
 export function getAvailableVoicingLayoutFilters(noteCount) {
   return noteCount >= 6 ? ["all", "close"] : VOICING_LAYOUT_FILTERS;
+}
+
+export function getAvailableBrowseModes(noteCount) {
+  return noteCount >= 4 ? ALL_BROWSE_MODES : ["forte", "iv"];
 }
 
 export function readBassFilter(params, name) {
@@ -55,16 +60,25 @@ export function buildUrlStateFromParams(params, keys, dataMap, noteCount) {
   const intervalVectorOptions = buildIntervalVectorOptions(keys, dataMap);
   const defaultIntervalVector =
     dataMap[selectedForte]?.iv || intervalVectorOptions[0] || "";
+  const genusOptions = getForteGeneraForCardinality(noteCount);
+  const genusIds = genusOptions.map((genus) => genus.id);
   const availableVoicingLayoutFilters = getAvailableVoicingLayoutFilters(noteCount);
+  const availableBrowseModes = getAvailableBrowseModes(noteCount);
 
   return {
-    browseMode: readEnumParam(params, "browse", BROWSE_MODES, "forte"),
+    browseMode: readEnumParam(params, "browse", availableBrowseModes, "forte"),
     selectedForte,
     selectedIntervalVector: readStringParam(
       params,
       "iv",
       defaultIntervalVector,
       intervalVectorOptions
+    ),
+    selectedGenusId: readStringParam(
+      params,
+      "genus",
+      genusIds[0] || null,
+      genusIds
     ),
     selected: readIntegerParam(params, "voicing", 0, { min: 0 }),
     maxSpan: readIntegerParam(params, "span", 5, {
@@ -124,4 +138,3 @@ export function buildUrlStateFromParams(params, keys, dataMap, noteCount) {
     selectedIntervalClasses: readIntervalClassFilter(params, "ic"),
   };
 }
-

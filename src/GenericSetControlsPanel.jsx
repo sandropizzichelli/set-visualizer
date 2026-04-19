@@ -64,6 +64,10 @@ export default function GenericSetControlsPanel({
   onSelectedIntervalVectorChange,
   intervalVectorOptions,
   intervalVectorMatches,
+  genusOptions,
+  selectedGenusId,
+  onSelectedGenusChange,
+  genusMatches,
   maxSpan,
   onMaxSpanChange,
   fretboardViewMode,
@@ -144,6 +148,14 @@ export default function GenericSetControlsPanel({
             >
               Per interval vector
             </PillButton>
+            {genusOptions.length > 0 && (
+              <PillButton
+                active={browseMode === "genus"}
+                onClick={() => onBrowseModeChange("genus")}
+              >
+                Per generi
+              </PillButton>
+            )}
           </div>
         </div>
       </div>
@@ -163,7 +175,7 @@ export default function GenericSetControlsPanel({
             ))}
           </select>
         </div>
-      ) : (
+      ) : browseMode === "iv" ? (
         <>
           <div className="control-card control-card--wide">
             <label className="control-label">Interval vector</label>
@@ -200,6 +212,47 @@ export default function GenericSetControlsPanel({
               <p className="helper-text">
                 {intervalVectorMatches.length} classi condividono{" "}
                 {formatIntervalVector(selectedIntervalVector)} in questa cardinalita.
+              </p>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="control-card control-card--wide">
+            <label className="control-label">Genere</label>
+            <select
+              value={selectedGenusId || ""}
+              onChange={(event) => onSelectedGenusChange(event.target.value)}
+              className="control-select"
+            >
+              {genusOptions.map((genus) => (
+                <option key={genus.id} value={genus.id}>
+                  {genus.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="control-card control-card--wide">
+            <div className="control-card__stack">
+              <div>
+                <label className="control-label">Classe compatibile</label>
+                <select
+                  value={selectedForte}
+                  onChange={(event) => onSelectedForteChange(event.target.value)}
+                  className="control-select"
+                >
+                  {genusMatches.map((key) => (
+                    <option key={key} value={key}>
+                      {key} | PF ({dataMap[key].pf})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <p className="helper-text">
+                {genusMatches.length} classi appartengono a questo genus in questa
+                cardinalita.
               </p>
             </div>
           </div>

@@ -445,3 +445,181 @@ export const FORTE_REFERENCE = {
   ...FORTE_5_7_DATA,
   ...FORTE_6_DATA,
 };
+
+const FORTE_GENERA_SOURCE = [
+  {
+    id: "1",
+    name: "Atonale",
+    generators: ["3-5"],
+    members: {
+      4: [5, 6, 8, 9, 13, 15, 16, 18, 29],
+      5: [4, 5, 6, 7, 9, 10, 12, 13, 14, 15, 16, 18, 19, 20, 22, 24, 25, 28, 29, 30, 31, 32, 36, 38],
+      6: [2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33, 34],
+    },
+  },
+  {
+    id: "2",
+    name: "Per toni interi",
+    generators: ["3-8"],
+    members: {
+      4: [5, 12, 15, 16, 21, 24, 25, 27, 29],
+      5: [4, 5, 6, 7, 8, 9, 10, 13, 14, 16, 18, 19, 20, 24, 25, 26, 28, 29, 30, 31, 32, 33, 34, 38],
+      6: [2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33, 34, 35],
+    },
+  },
+  {
+    id: "3",
+    name: "Diminuito",
+    generators: ["3-10"],
+    members: {
+      4: [12, 13, 18, 27, 28],
+      5: [4, 8, 10, 12, 16, 18, 19, 22, 25, 26, 28, 29, 31, 34, 36, 38],
+      6: [2, 3, 5, 10, 11, 12, 13, 15, 17, 18, 19, 21, 23, 24, 25, 27, 28, 29, 30, 31, 34],
+    },
+  },
+  {
+    id: "4",
+    name: "Aumentato",
+    generators: ["3-12"],
+    members: {
+      4: [19, 24],
+      5: [13, 17, 21, 22, 26, 30, 33, 37],
+      6: [14, 15, 19, 20, 21, 22, 31, 34, 35],
+    },
+  },
+  {
+    id: "5",
+    name: "Cromatico",
+    generators: ["3-1", "3-2"],
+    members: {
+      4: [1, 2],
+      5: [1, 2, 3, 4, 5, 8, 9, 11, 13, 36],
+      6: [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 14, 15, 16, 21, 22],
+    },
+  },
+  {
+    id: "6",
+    name: "Semicromatico",
+    generators: ["3-2", "3-3"],
+    members: {
+      4: [2, 3, 12],
+      5: [1, 2, 3, 4, 8, 9, 10, 11, 13, 16, 17, 18, 26, 28, 31, 36],
+      6: [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 22, 23, 24, 27, 28, 30, 31, 34],
+    },
+  },
+  {
+    id: "7",
+    name: "Cromatico-diatonico",
+    generators: ["3-2", "3-7"],
+    members: {
+      4: [10, 11, 13],
+      5: [2, 3, 4, 9, 10, 12, 19, 23, 24, 25, 26, 27, 29, 31, 36],
+      6: [1, 2, 3, 5, 8, 9, 10, 11, 12, 13, 14, 15, 18, 21, 22, 23, 24, 25, 27, 29, 30, 31, 32, 33, 34],
+    },
+  },
+  {
+    id: "8",
+    name: "Atonale",
+    generators: ["3-3", "3-4"],
+    members: {
+      4: [4, 7, 19],
+      5: [2, 3, 4, 6, 11, 13, 14, 17, 18, 21, 22, 26, 30, 37, 38],
+      6: [1, 2, 3, 4, 5, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 31, 34],
+    },
+  },
+  {
+    id: "9",
+    name: "Atonale-tonale",
+    generators: ["3-3", "3-11"],
+    members: {
+      4: [17, 18, 19],
+      5: [11, 13, 16, 17, 18, 19, 21, 22, 26, 30, 31, 32, 36, 37, 38],
+      6: [5, 8, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 27, 28, 29, 30, 31, 34],
+    },
+  },
+  {
+    id: "10",
+    name: "Atonale-tonale",
+    generators: ["3-4", "3-11"],
+    members: {
+      4: [14, 19, 20],
+      5: [5, 11, 13, 17, 18, 20, 21, 22, 23, 26, 27, 29, 30, 37, 38],
+      6: [5, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 31, 32, 33, 34],
+    },
+  },
+  {
+    id: "11",
+    name: "Diatonico",
+    generators: ["3-7", "3-9"],
+    members: {
+      4: [22, 23],
+      5: [11, 14, 23, 24, 27, 29, 30, 34, 35, 36],
+      6: [8, 9, 11, 12, 14, 16, 18, 22, 24, 25, 26, 31, 32, 33, 34],
+    },
+  },
+  {
+    id: "12",
+    name: "Diatonico-tonale",
+    generators: ["3-7", "3-11"],
+    members: {
+      4: [22, 26, 27],
+      5: [11, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38],
+      6: [8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
+    },
+  },
+];
+
+function buildForteNumberLookup(keys) {
+  const lookup = new Map();
+
+  keys.forEach((key) => {
+    const suffix = key.split("-")[1]?.replace("Z", "");
+    if (!suffix) return;
+    lookup.set(suffix, key);
+  });
+
+  return lookup;
+}
+
+function resolveGenusKeys(numbers, lookup) {
+  return numbers
+    .map((number) => lookup.get(String(number)))
+    .filter(Boolean);
+}
+
+const FORTE_GENERA_LOOKUPS = {
+  4: buildForteNumberLookup(TETRACHORD_KEYS),
+  5: buildForteNumberLookup(PENTACHORD_KEYS),
+  6: buildForteNumberLookup(HEXACHORD_KEYS),
+};
+
+export const FORTE_GENERA_BY_CARDINALITY = {
+  4: FORTE_GENERA_SOURCE.map((genus) => ({
+    id: genus.id,
+    name: genus.name,
+    generators: genus.generators,
+    label: `Genus ${genus.id} · ${genus.name} (${genus.generators.join(" & ")})`,
+    numbers: genus.members[4],
+    keys: resolveGenusKeys(genus.members[4], FORTE_GENERA_LOOKUPS[4]),
+  })),
+  5: FORTE_GENERA_SOURCE.map((genus) => ({
+    id: genus.id,
+    name: genus.name,
+    generators: genus.generators,
+    label: `Genus ${genus.id} · ${genus.name} (${genus.generators.join(" & ")})`,
+    numbers: genus.members[5],
+    keys: resolveGenusKeys(genus.members[5], FORTE_GENERA_LOOKUPS[5]),
+  })),
+  6: FORTE_GENERA_SOURCE.map((genus) => ({
+    id: genus.id,
+    name: genus.name,
+    generators: genus.generators,
+    label: `Genus ${genus.id} · ${genus.name} (${genus.generators.join(" & ")})`,
+    numbers: genus.members[6],
+    keys: resolveGenusKeys(genus.members[6], FORTE_GENERA_LOOKUPS[6]),
+  })),
+};
+
+export function getForteGeneraForCardinality(cardinality) {
+  return FORTE_GENERA_BY_CARDINALITY[cardinality] || [];
+}
