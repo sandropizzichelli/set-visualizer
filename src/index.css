@@ -372,6 +372,19 @@ code,
   border-top: 1px solid rgba(93, 66, 40, 0.08);
 }
 
+.hero-embedded-controls {
+  display: grid;
+  gap: 16px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(93, 66, 40, 0.08);
+}
+
+.hero-embedded-controls__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .hero-interval-filters .picker-head {
   margin-bottom: 0;
 }
@@ -1813,7 +1826,8 @@ code,
   .detail-grid,
   .picker-row,
   .interval-breakdown,
-  .hero-summary-grid {
+  .hero-summary-grid,
+  .hero-embedded-controls__grid {
     grid-template-columns: 1fr;
   }
 

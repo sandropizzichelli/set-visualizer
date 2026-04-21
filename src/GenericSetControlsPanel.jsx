@@ -515,6 +515,80 @@ export default function GenericSetControlsPanel({
                 )}
               </div>
             )}
+
+            {!showComplement && (
+              <div className="hero-embedded-controls">
+                <div className="hero-embedded-controls__grid">
+                  <div className="control-card control-card--wide">
+                    <div className="control-card__stack">
+                      <SectionTitle>Analisi</SectionTitle>
+                      <div className="segmented-row">
+                        <PillButton
+                          active={analysisMode === "subsets"}
+                          onClick={() => onAnalysisModeChange("subsets")}
+                        >
+                          Subset-class
+                        </PillButton>
+                        <PillButton
+                          active={analysisMode === "supersets"}
+                          onClick={() => onAnalysisModeChange("supersets")}
+                        >
+                          Superset-class
+                        </PillButton>
+                      </div>
+
+                      {analysisMode === "subsets" && subsetCardinalityOptions.length > 0 && (
+                        <div>
+                          <label className="control-label">Tipo di subset</label>
+                          <select
+                            value={subsetTargetCardinality}
+                            onChange={(event) =>
+                              onSubsetTargetCardinalityChange(Number(event.target.value))
+                            }
+                            className="control-select"
+                          >
+                            {subsetCardinalityOptions.map((cardinality) => (
+                              <option key={cardinality} value={cardinality}>
+                                {getCardinalityLabel(cardinality)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {analysisMode === "supersets" &&
+                        supersetCardinalityOptions.length > 0 && (
+                          <div>
+                            <label className="control-label">Tipo di superset</label>
+                            <select
+                              value={supersetTargetCardinality}
+                              onChange={(event) =>
+                                onSupersetTargetCardinalityChange(Number(event.target.value))
+                              }
+                              className="control-select"
+                            >
+                              {supersetCardinalityOptions.map((cardinality) => (
+                                <option key={cardinality} value={cardinality}>
+                                  {getCardinalityLabel(cardinality)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+
+                  <div className="control-card control-card--wide">
+                    <TransformButtons
+                      mode={transformMode}
+                      setMode={onTransformModeChange}
+                      amount={transformAmount}
+                      setAmount={onTransformAmountChange}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -751,89 +825,6 @@ export default function GenericSetControlsPanel({
                     </div>
                   </>
                 )}
-              </div>
-            </details>
-          </ControlSection>
-        )}
-
-        {!showComplement && (
-          <ControlSection
-            eyebrow={null}
-            title={null}
-            className="control-section--collapsible"
-          >
-            <details className="control-section-disclosure" open>
-              <summary className="control-section-disclosure__summary">
-                <span>Analisi</span>
-              </summary>
-
-              <div className="control-section__grid control-section__grid--nested">
-                <div className="control-card control-card--wide">
-                  <div className="control-card__stack">
-                    <div className="segmented-row">
-                      <PillButton
-                        active={analysisMode === "subsets"}
-                        onClick={() => onAnalysisModeChange("subsets")}
-                      >
-                        Subset-class
-                      </PillButton>
-                      <PillButton
-                        active={analysisMode === "supersets"}
-                        onClick={() => onAnalysisModeChange("supersets")}
-                      >
-                        Superset-class
-                      </PillButton>
-                    </div>
-
-                    {analysisMode === "subsets" && subsetCardinalityOptions.length > 0 && (
-                      <div>
-                        <label className="control-label">Tipo di subset</label>
-                        <select
-                          value={subsetTargetCardinality}
-                          onChange={(event) =>
-                            onSubsetTargetCardinalityChange(Number(event.target.value))
-                          }
-                          className="control-select"
-                        >
-                          {subsetCardinalityOptions.map((cardinality) => (
-                            <option key={cardinality} value={cardinality}>
-                              {getCardinalityLabel(cardinality)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {analysisMode === "supersets" &&
-                      supersetCardinalityOptions.length > 0 && (
-                        <div>
-                          <label className="control-label">Tipo di superset</label>
-                          <select
-                            value={supersetTargetCardinality}
-                            onChange={(event) =>
-                              onSupersetTargetCardinalityChange(Number(event.target.value))
-                            }
-                            className="control-select"
-                          >
-                            {supersetCardinalityOptions.map((cardinality) => (
-                              <option key={cardinality} value={cardinality}>
-                                {getCardinalityLabel(cardinality)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                  </div>
-                </div>
-
-                <div className="control-card control-card--wide">
-                  <TransformButtons
-                    mode={transformMode}
-                    setMode={onTransformModeChange}
-                    amount={transformAmount}
-                    setAmount={onTransformAmountChange}
-                  />
-                </div>
               </div>
             </details>
           </ControlSection>
